@@ -1,0 +1,69 @@
+/* ═══════════════════════════════════════════════════
+   TGTDA – Self-hosted Google Fonts
+   Place this file at: assets/vendor/css/tgtda-fonts.css
+   Font files go in:   assets/vendor/fonts/google/
+   
+   Run download_assets.sh to fetch the .woff2 files,
+   OR download manually from https://gwfh.mranftl.com
+   (Google Webfonts Helper) and place in fonts/google/
+═══════════════════════════════════════════════════ */
+
+/* ── Baloo 2 (display / headings) ── */
+@font-face {
+  font-family: 'Baloo 2';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/google/Baloo2-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Baloo 2';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../fonts/google/Baloo2-SemiBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Baloo 2';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/google/Baloo2-Bold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Baloo 2';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('../fonts/google/Baloo2-ExtraBold.woff2') format('woff2');
+}
+
+/* ── Nunito (body text) ── */
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/google/Nunito-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../fonts/google/Nunito-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../fonts/google/Nunito-SemiBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/google/Nunito-Bold.woff2') format('woff2');
+}
