@@ -107,7 +107,7 @@ class Admin extends MX_Controller
 
 		$data = array();
 				$data_view['data'] = array(
-				'title' => ' eyeSmart Digital Payments |Admin ',
+				'title' => 'TGTDA |Admin ',
 				'content' => 'admin',
 				'header1' => 'Admin',
 		         'header2' => 'Add Admin',
@@ -202,7 +202,7 @@ class Admin extends MX_Controller
 		 $this->authorization->userauthorization('admin','view');
 		 $data = array();
 				$data_view['data'] = array(
-				'title' => ' eyeSmart Digital Payments |Admin ',
+				'title' => 'TGTDA |Admin ',
 				'content' => 'admin_view',
 				'header1' => 'Admin',
 		         'header2' => 'View Admins',

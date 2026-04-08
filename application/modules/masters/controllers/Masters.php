@@ -137,7 +137,7 @@ class Masters extends MX_Controller
 	{
 		#COMMAN ARRAY  PASSING VIEW FILE AND HEADERS AND TITLE , CONTENT MEANS -VIEW FILE NAME
 		$data_view['data'] = array(
-		'title' => ' eyeSmart Digital Payments |Masters ',
+		'title' => ' TGTDA |Masters ',
 		'content' => 'country',
 		'header1' => 'Masters',
          'header2' => 'Country',
@@ -204,7 +204,7 @@ class Masters extends MX_Controller
 	{
 		$data = array();
 				$data_view['data'] = array(
-				'title' => ' eyeSmart Digital Payments |Masters ',
+				'title' => ' TGTDA |Masters ',
 				'content' => 'state',
 				'header1' => 'Masters',
 		         'header2' => 'State',
@@ -217,7 +217,7 @@ class Masters extends MX_Controller
 	{
 		$data = array();
 				$data_view['data'] = array(
-				'title' => ' eyeSmart Digital Payments |Masters ',
+				'title' => ' TGTDA |Masters ',
 				'content' => 'district',
 				'header1' => 'Masters',
 		         'header2' => 'District',
@@ -230,7 +230,7 @@ class Masters extends MX_Controller
 	{
 		$data = array();
 				$data_view['data'] = array(
-				'title' => ' eyeSmart Digital Payments |Masters ',
+				'title' => ' TGTDA |Masters ',
 				'content' => 'city',
 				'header1' => 'Masters',
 		         'header2' => 'City',
@@ -250,7 +250,7 @@ class Masters extends MX_Controller
 	{
 		$data = array();
 				$data_view['data'] = array(
-				'title' => ' eyeSmart Digital Payments |Masters ',
+				'title' => ' TGTDA |Masters ',
 				'content' => 'tax',
 				'header1' => 'Masters',
 		         'header2' => 'Tax',

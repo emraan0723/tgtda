@@ -105,7 +105,7 @@ class Mandal extends MX_Controller
 
 		#COMMAN ARRAY  PASSING VIEW FILE AND HEADERS AND TITLE , CONTENT MEANS -VIEW FILE NAME
 		$data_view['data'] = array(
-		'title' => ' eyeSmart Digital Payments |Masters ',
+		'title' => ' TGTDA |Masters ',
 		'content' => 'mandal',
 		'header1' => 'Masters',
 		 'header2' => 'Mandal',

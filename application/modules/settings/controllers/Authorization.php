@@ -18,7 +18,7 @@ class Authorization extends MX_Controller
 	public function authorization()
 	{
 		$data_view['data'] = array('authentication' => 'authenticationError',
-		//s'title' => ' eyeSmart Digital Payments',
+		//s'title' => ' TGTDA',
 		'msg'=> $this->errormsgs->authenticationerror);
 		$this->load->view('main_page', $data_view);	
 		exit;

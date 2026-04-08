@@ -11,7 +11,7 @@ class Profile extends MX_Controller
 	    $this->load->model(array('Admin_model'));
 	    $this->load->helper(array('form', 'url'));
         $this->session_check->check_session();
-          $this->authorization->userauthorization('admin','permissionset');
+        //$this->authorization->userauthorization('user','permissionset');
 	    $this->perPage =25;
 
 	}
@@ -26,7 +26,7 @@ class Profile extends MX_Controller
 		
 		$data = array();
 				$data_view['data'] = array(
-				'title' => 'TGTDA |Profile ',
+				'title' => ' eyeSmart Digital Payments |Profile ',
 				'content' => 'user_profile',
 				'header1' => 'Profile',
 		         'header2' => 'User Profile',
@@ -66,7 +66,7 @@ class Profile extends MX_Controller
 	{
 		$data = array();
 				$data_view['data'] = array(
-				'title' => 'TGTDA |Profile ',
+				'title' => ' eyeSmart Digital Payments |Profile ',
 				'content' => 'user_profile',
 				'header1' => 'Profile',
 		         'header2' => 'User Profile',

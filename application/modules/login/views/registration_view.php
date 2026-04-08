@@ -369,16 +369,22 @@
             width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
             font-size: 1rem; display: flex; align-items: center; justify-content: center;
         }
-        .cam-modal-body { padding: 16px; }
+        .cam-modal-body { padding: 12px; background: #111; }
         .cam-modal-video {
-            width: 100%; border-radius: 10px; background: #1a1a1a;
-            max-height: 300px; object-fit: cover; display: block;
+            width: 100%;
+            height: auto;
+            max-height: 60vh;
+            border-radius: 10px;
+            background: #000;
+            display: block;
+            object-fit: contain; /* IMPORTANT: contain = full frame, no crop */
         }
         .cam-modal-canvas { display: none; }
         .cam-modal-preview {
             width: 100%; border-radius: 10px; display: none;
-            max-height: 260px; object-fit: contain;
-            border: 2px solid var(--success); margin-top: 8px;
+            max-height: 60vh; object-fit: contain;
+            border: 2px solid var(--success);
+            background: #000;
         }
         .cam-modal-footer {
             padding: 12px 16px; display: flex; gap: 10px; justify-content: center;
@@ -929,10 +935,34 @@
             <button class="cam-modal-close" onclick="closeDocCamModal()">✕</button>
         </div>
         <div class="cam-modal-body">
-            <video id="docCamVideo" class="cam-modal-video" autoplay playsinline></video>
+            <div style="position:relative;display:inline-block;width:100%;">
+                <video id="docCamVideo" class="cam-modal-video" autoplay playsinline muted></video>
+                <!-- Document alignment guide overlay -->
+                <div id="docCamGuide" style="
+                    position:absolute; inset:0; pointer-events:none;
+                    display:flex; align-items:center; justify-content:center;
+                ">
+                    <div style="
+                        width:88%; height:78%;
+                        border: 2.5px solid rgba(255,220,50,0.85);
+                        border-radius: 8px;
+                        box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
+                        position:relative;
+                    ">
+                        <!-- Corner marks -->
+                        <span style="position:absolute;top:-3px;left:-3px;width:18px;height:18px;border-top:4px solid #ffe033;border-left:4px solid #ffe033;border-radius:3px 0 0 0;"></span>
+                        <span style="position:absolute;top:-3px;right:-3px;width:18px;height:18px;border-top:4px solid #ffe033;border-right:4px solid #ffe033;border-radius:0 3px 0 0;"></span>
+                        <span style="position:absolute;bottom:-3px;left:-3px;width:18px;height:18px;border-bottom:4px solid #ffe033;border-left:4px solid #ffe033;border-radius:0 0 0 3px;"></span>
+                        <span style="position:absolute;bottom:-3px;right:-3px;width:18px;height:18px;border-bottom:4px solid #ffe033;border-right:4px solid #ffe033;border-radius:0 0 3px 0;"></span>
+                        <div style="position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);font-size:.68rem;color:#ffe033;font-weight:700;white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.8);">
+                            Align document inside the frame
+                        </div>
+                    </div>
+                </div>
+            </div>
             <canvas id="docCamCanvas" class="cam-modal-canvas"></canvas>
             <img id="docCamPreview" class="cam-modal-preview" src="" alt="">
-            <div class="text-center mt-2" style="font-size:.74rem;color:var(--text-muted);" id="docCamTip">
+            <div class="text-center mt-2" style="font-size:.74rem;color:#aaa;" id="docCamTip">
                 <i class="bi bi-lightbulb me-1"></i>Place document flat on a dark surface for best results
             </div>
         </div>
@@ -961,6 +991,7 @@
                 <h5 class="modal-title modal-terms" id="terms-modal-title" style="color: #fff;">
                     <i class="bi bi-file-text me-2"></i>Terms &amp; Conditions – TGTDA
                 </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" style="filter:invert(1) brightness(2);"></button>
             </div>
             <div class="modal-body">
                 <div class="terms-content" id="terms-modal-body"></div>
@@ -1042,6 +1073,7 @@
         document.getElementById('btnDocRetakeModal').style.display = 'none';
         document.getElementById('btnDocUsePhoto').style.display = 'none';
         document.getElementById('docCamTip').style.display = '';
+        document.getElementById('docCamGuide').style.display = 'flex';
 
         document.getElementById('docCamOverlay').classList.add('show');
         await startDocCamStream();
@@ -1051,12 +1083,19 @@
         if (docCamStream) { docCamStream.getTracks().forEach(t => t.stop()); }
         try {
             docCamStream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: { ideal: docCamFacing }, width: { ideal: 1280 }, height: { ideal: 720 } },
+                video: {
+                    facingMode: { ideal: docCamFacing },
+                    width:  { ideal: 1920, min: 640 },
+                    height: { ideal: 1080, min: 480 }
+                },
                 audio: false
             });
-            document.getElementById('docCamVideo').srcObject = docCamStream;
+            const vid = document.getElementById('docCamVideo');
+            vid.srcObject = docCamStream;
+            // Wait for metadata so videoWidth/Height are populated
+            vid.onloadedmetadata = () => vid.play();
         } catch (e) {
-            // Fallback: try without facingMode constraint
+            // Fallback: try without constraints
             try {
                 docCamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                 document.getElementById('docCamVideo').srcObject = docCamStream;
@@ -1075,16 +1114,29 @@
     function captureDocPhoto() {
         const video = document.getElementById('docCamVideo');
         const canvas = document.getElementById('docCamCanvas');
-        canvas.width = video.videoWidth || 640;
-        canvas.height = video.videoHeight || 480;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-        docCamCapturedData = canvas.toDataURL('image/jpeg', 0.85);
+
+        // Use actual stream track resolution (not CSS display size) to avoid cutoff
+        let captureW = video.videoWidth;
+        let captureH = video.videoHeight;
+        if (docCamStream) {
+            const track = docCamStream.getVideoTracks()[0];
+            if (track) {
+                const settings = track.getSettings();
+                if (settings.width)  captureW = settings.width;
+                if (settings.height) captureH = settings.height;
+            }
+        }
+        canvas.width  = captureW || 1280;
+        canvas.height = captureH || 720;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        docCamCapturedData = canvas.toDataURL('image/jpeg', 0.92); // higher quality for docs
 
         // Show preview
         const preview = document.getElementById('docCamPreview');
         preview.src = docCamCapturedData;
         preview.style.display = 'block';
         video.style.display = 'none';
+        document.getElementById('docCamGuide').style.display = 'none';
 
         document.getElementById('btnDocCapture').style.display = 'none';
         document.getElementById('btnDocRetakeModal').style.display = '';
@@ -1095,6 +1147,7 @@
     function retakeDocModal() {
         docCamCapturedData = null;
         document.getElementById('docCamVideo').style.display = 'block';
+        document.getElementById('docCamGuide').style.display = 'flex';
         document.getElementById('docCamPreview').style.display = 'none';
         document.getElementById('btnDocCapture').style.display = '';
         document.getElementById('btnDocRetakeModal').style.display = 'none';

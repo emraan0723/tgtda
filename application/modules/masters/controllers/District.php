@@ -95,12 +95,13 @@ class District extends MX_Controller
 		#COMMAN ARRAY  PASSING VIEW FILE AND HEADERS AND TITLE , CONTENT MEANS -VIEW FILE NAME
 		$data = array();
 		$data_view['data'] = array(
-		'title' => ' eyeSmart Digital Payments |Masters ',
+		'title' => ' TGTDA |Masters ',
 		'content' => 'district',
 		'header1' => 'Masters',
 		'header2' => 'District',
 		);
 		#GET COUNTRY LIST
+        $params = array();
 		$res=$this->Comman_model->getCountryList($params);
 		if(isset($res['query']))
 		{
