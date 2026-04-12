@@ -26,7 +26,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 
 
-$config['base_url'] = 'http://localhost/tgtda/';
+$config['base_url'] = '//localhost/tgtda/';
 
 
 /*
@@ -227,7 +227,7 @@ $config['allow_get_array'] = TRUE;
 | your log files will fill up very fast.
 |
 */
-$config['log_threshold'] = 4;
+$config['log_threshold'] = 1;
 
 /*
 |--------------------------------------------------------------------------
@@ -328,7 +328,7 @@ $config['cache_query_string'] = TRUE;
 | https://codeigniter.com/user_guide/libraries/encryption.html
 |
 */
-$config['encryption_key'] = 'tgtda9502426';
+$config['encryption_key'] = 'tgtda9502426@12345678#$%!@#$%^^^';
 
 /*
 |--------------------------------------------------------------------------

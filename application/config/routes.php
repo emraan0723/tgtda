@@ -110,6 +110,10 @@ $route['currency_datatable'] = 'masters/currency/ajax_list';
 $route['edit_currency'] = 'masters/currency/editCurrency';
 
 
+#client
+$route['client_profile'] = 'clients/profile/userProfile';
+
+
 
 
 

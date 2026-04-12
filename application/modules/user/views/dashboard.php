@@ -1,196 +1,160 @@
+<style>
+    body { background: #e8edf5; }
+    .id-card { background:#fff; border-radius:16px; overflow:hidden; border:1px solid #cdd8ea; max-width:520px; margin:0 auto; }
+    .card-head { background:#1e88e5; padding:14px 18px; display:flex; align-items:center; justify-content:space-between; }
+    .head-left { display:flex; align-items:center; gap:10px; }
+    .logo-box { width:34px; height:34px;  border-radius:7px; display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; }
+    .org-name { color:#fff; font-size:13px; font-weight:900; letter-spacing:.4px; }
+    .org-sub  { color:rgba(255,255,255,.6); font-size:9px; letter-spacing:.3px; margin-top:1px; }
+    .card-title { color:rgba(255,255,255,.7); font-size:9px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; text-align:right; }
+    .card-type  { color:#fff; font-size:12px; font-weight:800; letter-spacing:.5px; margin-top:2px; text-align:right; }
+    .card-body  { display:flex; }
+    .photo-col  { background:#f0f5fc; width:130px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; padding:20px 14px; border-right:1px solid #e0eaf5; }
+    .photo-frame { width:82px; height:90px; border-radius:8px; overflow:hidden; background:#c8dff8; display:flex; align-items:center; justify-content:center; border:2px solid #1e88e5; margin-bottom:12px; }
+    .photo-frame img { width:100%; height:100%; object-fit:cover; }
+    .photo-ini  { font-size:28px; font-weight:900; color:#1e88e5; }
+    .member-since { font-size:8px; color:#8a9ab5; text-transform:uppercase; letter-spacing:.6px; text-align:center; font-weight:600; }
+    .member-since span { display:block; font-size:11px; color:#1a2a4a; font-weight:700; margin-top:2px; }
+    .info-col   { flex:1; padding:18px 18px 14px; }
+    .drv-name   { font-size:18px; font-weight:900; color:#1a2a4a; line-height:1.1; margin-bottom:3px; }
+    .drv-regid  { font-size:11px; color:#1e88e5; font-weight:700; letter-spacing:.4px; margin-bottom:14px; }
+    .fields     { display:grid; grid-template-columns:1fr 1fr; gap:9px 12px; }
+    .field-full { grid-column:1/-1; }
+    .fl { font-size:8px; color:#9aabbb; text-transform:uppercase; letter-spacing:.7px; font-weight:600; margin-bottom:2px; }
+    .fv { font-size:11px; color:#1a2a4a; font-weight:600; line-height:1.3; }
+    .validity-row { display:flex; gap:0; border-top:1px solid #edf2f8; margin-top:14px; }
+    .vfield { flex:1; padding:8px 0; }
+    .vfield:first-child { padding-right:12px; border-right:1px solid #edf2f8; }
+    .vfield:last-child  { padding-left:12px; }
+    .card-foot { background:#1a2a4a; padding:9px 18px; display:flex; align-items:center; justify-content:space-between; }
+    .f-dot    { width:6px; height:6px; border-radius:50%; background:#4cdf90; display:inline-block; margin-right:5px; }
+    .f-status { font-size:9px; color:#4cdf90; font-weight:700; text-transform:uppercase; letter-spacing:.6px; }
+    .f-right  { font-size:8px; color:rgba(255,255,255,.35); letter-spacing:.4px; }
+    .dl-btn   { width:100%; background:#1e88e5; color:#fff; border:none; border-radius:10px; padding:11px; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; margin-top:14px; }
+    .dl-btn:hover { background:#1a7bd0; }
+</style>
 
+<div class="container-fluid py-4">
+    <div class="text-center mb-3">
+        <h5 class="fw-semibold mb-1" style="color:#1a2a4a;">Driver Identity Card</h5>
+        <p class="text-muted" style="font-size:11px;">TGTDA &mdash; Telangana Goods Transport &amp; Drivers Association</p>
+    </div>
 
-<div class="container-fluid">
+    <div style="max-width:520px;margin:0 auto;">
 
-    <!-- Row -->
-    <div class="row">
-        <!-- Column -->
-        <div class="col-md-6 col-lg-4">
-            <div class="card card-body">
-                <!-- Row -->
-                <div class="row">
-                    <!-- Column -->
-                    <div class="col pr-0 align-self-center">
-                        <h2 class="font-weight-light mb-0"><?php echo isset($total_customer) ? $total_customer : 0; ?> </h2>
-                        <h6 class="text-muted">Total Users</h6>
+        <div id="idcard" class="id-card">
+
+            <!-- Header -->
+            <div class="card-head">
+                <div class="head-left">
+                    <div class="logo-box">
+                        <img src="<?php echo base_url().'images/logo.jpg'?>" alt="logo" width="76">
                     </div>
-                    <!-- Column -->
-                    <div class="col text-right align-self-center" style="padding-right:0px;">
-                        <div class="css-bar mb-0 css-bar-info css-bar"></div>
+                    <div>
+                        <div class="org-name">TGTDA</div>
+                        <div class="org-sub">Telangana Goods Transport &amp; Drivers Association</div>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <div class="col-md-6 col-lg-4">
-            <div class="card card-body">
-                <!-- Row -->
-                <div class="row">
-                    <!-- Column -->
-                    <div class="col pr-0 align-self-center">
-                        <h2 class="font-weight-light mb-0"><?php echo isset($total_active_customer) ? $total_active_customer : 0; ?> </h2>
-                        <h6 class="text-muted">Total Active Users</h6>
-                    </div>
-                    <!-- Column -->
-                    <div class="col text-right align-self-center" style="padding-right:0px;">
-                        <div class="css-bar mb-0 css-bar-info css-bar"></div>
-                    </div>
+                <div>
+                    <div class="card-title">Identity Card</div>
+                    <div class="card-type"><?php echo htmlspecialchars($driver['tr_registration_type']); ?></div>
                 </div>
             </div>
+
+            <!-- Body -->
+            <div class="card-body">
+
+                <!-- Photo Column -->
+                <div class="photo-col">
+                    <div class="photo-frame">
+                        <?php if (!empty($driver['tr_selfie'])): ?>
+                            <img src="<?php echo base_url().'uploads/registration/'.$driver['tr_reg_key'].'/'.$driver['tr_selfie']; ?>" alt="Photo">
+                        <?php else: ?>
+                            <span class="photo-ini"><?php echo htmlspecialchars($initials); ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <!--     <div style="margin-top:4px;text-align:center;">
+                        <div style="background:#1e88e5;color:#fff;font-size:9px;font-weight:700;letter-spacing:.8px;padding:4px 10px;border-radius:20px;display:inline-block;">
+                            <?php /*echo htmlspecialchars($driver['tr_registration_type']); */?>
+                        </div>
+                    </div>-->
+                </div>
+
+                <!-- Info Column -->
+                <div class="info-col">
+                    <div class="drv-name"><?php echo htmlspecialchars($driver['tr_full_name']); ?></div>
+                    <div class="drv-regid">#<?php echo htmlspecialchars($reg_id); ?></div>
+
+                    <div class="fields">
+                        <div>
+                            <div class="fl">Mobile</div>
+                            <div class="fv"><?php echo htmlspecialchars($driver['tr_mobile']); ?></div>
+                        </div>
+                        <div>
+                            <div class="fl">Date of Birth</div>
+                            <div class="fv"><?php echo date('d M Y', strtotime($driver['tr_dob'])); ?></div>
+                        </div>
+                        <div class="field-full">
+                            <div class="fl">Address</div>
+                            <div class="fv"><?php echo htmlspecialchars($driver['tr_full_address']); ?></div>
+                        </div>
+                    </div>
+
+                    <div class="validity-row">
+                        <div class="vfield">
+                            <div class="fl">Issue Date</div>
+                            <div class="fv"><?php echo htmlspecialchars($issue_date); ?></div>
+                        </div>
+                        <div class="vfield">
+                            <div class="fl">Valid Until</div>
+                            <div class="fv" style="color:#1e88e5;font-weight:800;"><?php echo htmlspecialchars($valid_until); ?></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer -->
+            <div class="card-foot">
+                <div>
+                    <span class="f-dot"></span>
+                    <span class="f-status"><?php echo ucfirst($driver['tr_status']); ?></span>
+                </div>
+                <!--<span class="f-right">https://tgtda.com</span>-->
+            </div>
+
         </div>
 
+        <!-- Download — outside #idcard so it never prints -->
+        <div id="dl-wrap">
+            <button class="dl-btn" onclick="downloadCard()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Download ID Card
+            </button>
+        </div>
 
+    </div>
 </div>
-<!-- ============================================================== -->
-<!-- End Container fluid  -->
-<!-- ============================================================== -->
 
-
-
-<!-- chartist chart -->
-<script src="<?php echo base_url();?>assets/libs/chartist/dist/chartist.min.js"></script>
-<script src="<?php echo base_url();?>assets/libs/chartist-plugin-tooltips/dist/chartist-plugin-tooltip.min.js"></script>
-<!--c3 JavaScript -->
-<script src="<?php echo base_url();?>assets/libs/d3/dist/d3.min.js"></script>
-<script src="<?php echo base_url();?>assets/libs/c3/c3.min.js"></script>
-<!-- Vector map JavaScript -->
-<script src="<?php echo base_url();?>assets/libs/jvectormap/jquery-jvectormap.min.js"></script>
-<script src="<?php echo base_url();?>assets/extra-libs/jvector/jquery-jvectormap-us-aea-en.js"></script>
-<!-- Chart JS -->
-
-
-<?php
-$months = array('JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC');
-        //$months = array( 'January', 'February', 'March', 'April', 'May', 'June', 'July ', 'August', 'September', 'October', 'November', 'December', );
-
-$monthname = array();
-$paid =array();
-$due = array();
-
-if(isset($getMonths) && count($getMonths) > 0)
-{
-    foreach ($getMonths as $datakey => $datavalue)
-    {
-
-
-
-       $monthname[] =$datakey;
-       $paid[] =isset($datavalue['PAID']) && ['product_discount_amount'] > 0 ? $datavalue['PAID']['product_discount_amount'] : 0;
-
-       $due[]= isset($datavalue['DUE']) && $datavalue['DUE']['product_discount_amount'] > 0 ? $datavalue['DUE']['product_discount_amount'] : 0;
-
-
-
-
-
-
-
-
-   }
-}
-
-/*
-          print"<pre>";
-        print_r($due);
-*/
-        $month = implode("' , '", $monthname);
-        $month = "'".strtoupper($month)."'";
-
-        $paid = implode(',', $paid);
-        $due = implode(',', $due);
-
-
-
-        ?>
-
-        <script type="text/javascript">
-            $(function ()
-            {
-                "use strict";
-            // ==============================================================
-            // Sales overview
-            // ==============================================================
-            var chart2 = new Chartist.Bar('.amp-pxl', {
-              labels: [<?php echo $month ?>],
-
-
-
-
-              series: [
-              [<?php echo $paid ?>],
-              [<?php echo $due ?>]
-              ]
-          }, {
-              axisX: {
-                    // On the x-axis start means top and end means bottom
-                    position: 'end',
-                    showGrid: false
-                },
-                axisY: {
-                    // On the y-axis start means left and end means right
-                    position: 'start'
-                },
-
-                plugins: [
-                Chartist.plugins.tooltip()
-                ]
-            });
-
-        });
-    </script>
-    <script type="text/javascript">
-       $(function()
-       {
-           var currency_id = "<?php echo isset($_POST['currency_id']) && $_POST['currency_id'] > 0  ? $_POST['currency_id'] : 45 ; ?>";
-           $("#currency_id").val(currency_id);
-           $("#currency_id").change(function()
-           {
-             var gettext =$("#currency_id option:selected" ).text();
-             $("#hidd_currency_name_id").val(gettext);
-
-             $("#frm_currency").submit();
-         });
-
-     </script>
-
-
-     <script type="text/javascript">
-
-       $.fn.datepicker.defaults.format = "dd-mm-yyyy";
-
-
-       $(".disdatepicker").datepicker({
-         startDate: "today" ,
-         todayHighlight: true
-
-     });
-    // Date Picker
-    jQuery('.mydatepicker, #datepicker, .input-group.date').datepicker();
-    jQuery('#datepicker-autoclose').datepicker({
-        //autoclose: true,
-        todayHighlight: true
-    });
-    jQuery('#date-range').datepicker({
-        toggleActive: true
-    });
-    jQuery('#datepicker-inline').datepicker({
-        todayHighlight: true
-    });
-</script>
-<script type="text/javascript">
- $(function()
- {
-     var currency_id = "<?php echo isset($_POST['currency_id']) && $_POST['currency_id'] > 0  ? $_POST['currency_id'] : 45 ; ?>"
-     $("#currency_id").val(currency_id);
-       /* $("#currency_id").change(function()
-        {
-           var gettext =$("#currency_id option:selected" ).text();
-           $("#hidd_currency_name_id").val(gettext);
-
-            $("#frm_currency").submit();
-        });*/
-    });
-</script>
-<script src="<?php echo base_url();?>assets/libs/moment/moment.js"></script>
-<script src="<?php echo base_url();?>assets/libs/bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
+    function downloadCard() {
+        var wrap = document.getElementById('dl-wrap');
+        wrap.style.display = 'none';
+        html2canvas(document.getElementById('idcard'), {
+            scale: 3,
+            useCORS: true,
+            backgroundColor: '#ffffff'
+        }).then(function(canvas) {
+            wrap.style.display = 'block';
+            var a = document.createElement('a');
+            a.download = 'TGTDA_<?php echo preg_replace('/\s+/', '_', $driver['tr_full_name']); ?>_IDCard.png';
+            a.href = canvas.toDataURL('image/png');
+            a.click();
+        });
+    }
+</script>

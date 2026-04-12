@@ -25,11 +25,11 @@ class Welcome extends CI_Controller {
 
 	public function debug()
 	{
-		$this->load->view('debug');
+		//$this->load->view('debug');
 	}
 	public function errorShow($error='') 
 	{
-            $this->load->view('errorShow');
+           // $this->load->view('errorShow');
         
     }
     // set set session function by BV
@@ -58,12 +58,12 @@ class Welcome extends CI_Controller {
 
         $mail->Host       = "smtp.office365.com"; // SMTP server
         $mail->Port       = 587;                   // set the SMTP port for the GMAIL server   
-        $mail->Username   = "eyesmartsupport@lvpei.net";  // GMAIL username
+        $mail->Username   = "";  // GMAIL username
         $mail->Password   = "EyE@#!SuP@rt";            // GMAIL password
         
         $mail->Subject = "bvvvvvv";
         $mail->MsgHTML("hello");        
-        $mail->AddAddress("venkat@bewsoft.net");
+        $mail->AddAddress("");
        /* if($mail_cc)
         $mail->AddCC($mail_cc);
         if($mail_bcc)

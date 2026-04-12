@@ -1,6 +1,6 @@
 <?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
-    /* ini_set('display_errors', 1);
-    ini_set('error_reporting', E_ALL);*/
+    ini_set('display_errors', 1);
+    ini_set('error_reporting', E_ALL);
 class Profile extends MX_Controller 
 {
 	function __construct() 
@@ -8,7 +8,7 @@ class Profile extends MX_Controller
 	    parent::__construct();
 
 	    $this->load->library(array('Session_check','session','form_validation','validationdigi','errormsgs','encryption','authorization'));
-	    $this->load->model(array('Admin_model'));
+	    $this->load->model(array('Clients_model'));
 	    $this->load->helper(array('form', 'url'));
         $this->session_check->check_session();
         //$this->authorization->userauthorization('user','permissionset');
@@ -41,7 +41,7 @@ class Profile extends MX_Controller
 			{
 				$pwd = isset($_POST['password'])? $this->db->escape_str(trim($_POST['password'])):'';
 				
-				$result = $this->Admin_model->ChangePassword($pwd);
+				$result = $this->Clients_model->ChangePassword($pwd);
 				if($result =='UPDATE_SUCCESS')	
 				{
 					$this->session->set_flashdata('sucess', $this->errormsgs->update_success);
@@ -64,6 +64,7 @@ class Profile extends MX_Controller
 
 	public function userProfile()
 	{
+
 		$data = array();
 				$data_view['data'] = array(
 				'title' => ' eyeSmart Digital Payments |Profile ',
@@ -71,7 +72,7 @@ class Profile extends MX_Controller
 				'header1' => 'Profile',
 		         'header2' => 'User Profile',
 				);
-		$data_view['userdeatils'] = $this->Admin_model->ProfileDeatails();			
+		$data_view['userdeatils'] = $this->Clients_model->ProfileDeatails();
 		
 
 		if($this->input->post())
@@ -95,7 +96,7 @@ class Profile extends MX_Controller
 				#UPDATE from edit form
 				$id = isset($_POST['admin_id'])?$this->db->escape_str(trim($_POST['admin_id'])):'';
 				$params['admin_id'] = $this->encryption->decrypt("$id");
-				$result  =$this->Admin_model->saveAdmin($params);
+				$result  =$this->Clients_model->saveAdmin($params);
 				if($result =='INSERT_SUCCESS')
 				{
 					$this->session->set_flashdata('sucess', $this->errormsgs->add_suceess);
@@ -148,7 +149,7 @@ class Profile extends MX_Controller
     	   $pwd = isset($_POST['userp']) ? $_POST['userp'] : ''; 
 			if($pwd !='' )
 			{
-				$res = $this->Admin_model->CheckingPassword($this->db->escape_str($pwd));
+				$res = $this->Clients_model->CheckingPassword($this->db->escape_str($pwd));
 				echo $res; 
 				exit;
 			}

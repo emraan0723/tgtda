@@ -1,4 +1,7 @@
-
+<?php
+/*print_r($_SESSION);
+exit;
+*/?>
 <!DOCTYPE html>
 <html dir="ltr" lang="en">
 <?php //$this->output->enable_profiler(TRUE);?>
@@ -209,7 +212,21 @@
 <body>
         <?php
 
-        $imagehtml =base_url().'images/default_pic.png';
+        if(isset($_SESSION['uuser_selfie'])  && !empty($_SESSION['uuser_selfie']))
+        {
+            $imagehtml =base_url('uploads/registration/'.$_SESSION['uuser_key'].'/'.$_SESSION['uuser_selfie']);
+            if(!file_exists($imagehtml))
+            {
+                $imagehtml =base_url().'images/default_pic.png';
+            }
+
+        }
+        else
+        {
+            $imagehtml =base_url().'images/default_pic.png';
+        }
+
+
 
 
         
@@ -244,10 +261,10 @@
                         <b class="logo-icon">
                             <!--You can put here icon as well // <i class="wi wi-sunset"></i> //-->
                             <!-- Dark Logo icon -->
-                            <img src="<?php echo base_url().'images/logo.jpg'?>" alt="Dashboard" class="dark-logo"  width="50px">
+                            <img src="<?php echo base_url().'images/logo.png'?>" alt="Dashboard" class="dark-logo"  width="100px">
                           
                             <!-- Light Logo icon -->
-                             <img src="<?php echo base_url().'images/logo.jpg'?>" alt="Dashboard" class="light-logo"  width="50px">
+                             <img src="<?php echo base_url().'images/logo.png'?>" alt="Dashboard" class="light-logo"  width="100px">
                           
                         </b>
                         <!--End Logo icon -->
@@ -316,17 +333,17 @@
                         <!-- ============================================================== -->
                         <!-- Profile -->
                         <!-- ============================================================== -->
-                        <li class="nav-item dropdown">
+                        <!--<li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle text-muted waves-effect waves-dark" href=""
-                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">   <img class="" src="<?php echo base_url()?>images/logo.jpg" width="114px" height="63px" alt="tgtda" /></a>
+                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">   <img class="" src="<?php /*echo base_url()*/?>images/logo.jpg" width="114px" height="63px" alt="tgtda" /></a>
                             <a></a>
-                        </li>
+                        </li>-->
                         <li class="nav-item dropdown">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</li>
                         <li class="nav-item dropdown ">
                            
                             <a class="nav-link dropdown-toggle waves-effect waves-dark " href="" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" >
                                 <img src="<?php echo $imagehtml; ?>" alt="user" width="30" class="profile-pic rounded-circle" />
-                                 <p style="margin-top: -47px;margin-left: -24px;font-size: 13px;"><?php echo isset($_SESSION['uuser_name']) ? ucwords(strtolower($_SESSION['uuser_name'])) :'';  ?>
+                                 <p style="margin-top: -47px;margin-left: -12px;font-size: 13px;"><?php echo isset($_SESSION['uuser_name']) ? ucwords(strtolower($_SESSION['uuser_name'])) :'';  ?>
                                    <?php //echo date('d-m-Y h:i s A'); ?>
                                  </p>
                                 
@@ -339,8 +356,8 @@
                                             <div class="u-text ml-2">
                                                 <h4 class="mb-0"><?php echo isset($_SESSION['uuser_name']) ? ucwords(strtolower($_SESSION['uuser_name'])) :'';  ?></h4>
                                                 <p class="text-muted mb-1 font-14"><?php echo isset($_SESSION['uuser_mobile']) ? strtolower($_SESSION['uuser_mobile']) :'';  ?></p>
-                                                <a href="<?php echo base_url().'client_profile'; ?>" class="btn btn-rounded btn-danger btn-sm text-white d-inline-block">View
-                                                    Profile</a>
+                                               <!-- <a href="<?php /*echo base_url().'client_profile'; */?>" class="btn btn-rounded btn-danger btn-sm text-white d-inline-block">View
+                                                    Profile</a>-->
                                             </div>
                                         </div>
                                     </li>

@@ -45,8 +45,8 @@
              <!--   <img class="" src="<?php /*echo base_url()*/?>images/.png" alt=" Logo" />-->
                 <div class="mt-4">
                     <h1 style="color: #ff144a !important;font-weight: bold;size: 25px"><?php echo  isset($data['msg']) ? $data['msg'] : '' ?></h1>
-                    <h3 class="mb-0 text-muted font-medium" style="color: #ff144a !important;font-weight: bold;size: 25px">Something wrong going on this page.</h5>
-                    <h3 class="text-muted font-medium" style="color: #ff144a !important;font-weight: bold;size: 25px">Please Check back again.</h5>
+                    <h3 class="mb-0 text-muted font-medium" style="color: #ff144a !important;font-weight: bold;size: 25px">Something wrong going on this page.</h3>
+                    <h3 class="text-muted font-medium" style="color: #ff144a !important;font-weight: bold;size: 25px">Please Check back again.</h3>
                 </div>
                 <div class="mt-4"><i class="ti-settings font-24"></i></div>
               <!--   <div class="mt-4">

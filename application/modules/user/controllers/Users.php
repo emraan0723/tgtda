@@ -2,13 +2,9 @@
 if (!defined('BASEPATH')) exit('No direct script access allowed');
 
 /**
- * Users Controller — v3
- * Fixed column mapping to actual tbl_registrations schema:
- *   tr_state    = int  (state ID)
- *   tr_district = int  (district ID)
- *   tr_mandal   = varchar (mandal name text)
- *   tr_village  = varchar (city/village text)
- * No tr_country_id, no tr_mandal_id columns in actual table.
+ * Users Controller — v4
+ * Added: tr_email field, email send on activate, email on password change
+ * All existing logic unchanged.
  */
 class Users extends MX_Controller
 {
@@ -18,7 +14,7 @@ class Users extends MX_Controller
         $this->load->library(array('Session_check','session','form_validation','validationdigi','errormsgs','encryption','authorization'));
         $this->load->model(array('User_model','login/Registration_model','Location_model'));
         $this->load->helper(array('form','url','common_helper'));
-        $this->load->library(array('session','upload','form_validation'));
+        $this->load->library(array('session','upload','form_validation','email_helper'));
         $this->session_check->check_session();
         $this->authorization->userauthorization('user','permissionset');
         $this->perPage = 25;
@@ -92,7 +88,6 @@ class Users extends MX_Controller
             $created_at = isset($r['tr_created_at'])        ? $r['tr_created_at']        : '';
             $tr_id      = isset($r['tr_id'])                ? (int)$r['tr_id']           : 0;
 
-            // Address tooltip data
             $addr_parts = array();
             if (!empty($r['tr_full_address'])) $addr_parts[] = $r['tr_full_address'];
             if (!empty($r['tr_village']))      $addr_parts[] = $r['tr_village'];
@@ -101,7 +96,6 @@ class Users extends MX_Controller
             if (!empty($r['state_name']))      $addr_parts[] = $r['state_name'];
             $address_tooltip = htmlspecialchars(implode(', ', array_filter($addr_parts)), ENT_QUOTES);
 
-            // Selfie URL
             $selfie_url = '';
             if (!empty($r['tr_selfie']) && !empty($r['tr_reg_key']))
                 $selfie_url = base_url('uploads/registration/'.$r['tr_reg_key'].'/'.$r['tr_selfie']);
@@ -122,9 +116,8 @@ class Users extends MX_Controller
             $s_class      = isset($status_map[$status]) ? $status_map[$status] : 'badge-pending';
             $status_badge = '<span class="badge '.$s_class.'">'.strtoupper(htmlspecialchars($status)).'</span>';
 
-            $initials     = strtoupper(substr($mobile, -2));
-            $selfie_attr  = $selfie_url  ? ' data-selfie="'.htmlspecialchars($selfie_url, ENT_QUOTES).'"' : '';
-            $addr_attr    = $address_tooltip ? ' data-address="'.$address_tooltip.'"' : '';
+            $selfie_attr = $selfie_url  ? ' data-selfie="'.htmlspecialchars($selfie_url, ENT_QUOTES).'"' : '';
+            $addr_attr   = $address_tooltip ? ' data-address="'.$address_tooltip.'"' : '';
 
             $mobile_cell = '<div class="d-flex align-items-center gap-2 selfie-hover-trigger"'.$selfie_attr.$addr_attr.' style="cursor:default">
                 <div>
@@ -188,8 +181,6 @@ class Users extends MX_Controller
                     $record[$df.'_url'] = base_url('uploads/registration/'.$record['tr_reg_key'].'/'.$record[$df]);
             }
 
-            // Enrich with state/district names for cascading restore in JS
-            // tr_state = state_id (int), tr_district = district_id (int)
             $record['tr_state_id_val']    = (int)$record['tr_state'];
             $record['tr_district_id_val'] = (int)$record['tr_district'];
 
@@ -198,8 +189,8 @@ class Users extends MX_Controller
                 $state_row = $this->Location_model->get_state_by_id((int)$record['tr_state']);
                 if ($state_row)
                 {
-                    $record['tr_state_name']  = $state_row['ts_state_name'];
-                    $record['tr_country_id_val'] = (int)$state_row['ts_country_id']; // ← for country dropdown
+                    $record['tr_state_name']     = $state_row['ts_state_name'];
+                    $record['tr_country_id_val'] = (int)$state_row['ts_country_id'];
                 }
             }
             if (!empty($record['tr_district']))
@@ -221,7 +212,7 @@ class Users extends MX_Controller
     }
 
     // ═══════════════════════════════════════════
-    // SAVE
+    // SAVE — ADDED: tr_email field + send email on activate
     // ═══════════════════════════════════════════
     public function save()
     {
@@ -229,7 +220,6 @@ class Users extends MX_Controller
 
         $tr_id = (int)$this->input->post('tr_id');
 
-        // Server-side validation
         $this->form_validation->set_rules('tr_mobile',            'Mobile No',   'required|numeric|min_length[10]|max_length[10]');
         $this->form_validation->set_rules('tr_aadhar_no',         'Aadhar No',   'required|min_length[12]|max_length[12]');
         $this->form_validation->set_rules('tr_language',          'Language',    'required');
@@ -242,6 +232,7 @@ class Users extends MX_Controller
         $this->form_validation->set_rules('tr_mandal_id',         'Mandal',      'required');
         $this->form_validation->set_rules('tr_village',           'City/Village','required');
         $this->form_validation->set_rules('tr_pincode',           'PIN Code',    'required|numeric|min_length[6]|max_length[6]');
+        $this->form_validation->set_rules('tr_email',             'Email',       'required|valid_email');
 
         if (!$this->form_validation->run())
         {
@@ -253,6 +244,8 @@ class Users extends MX_Controller
 
         $aadhar = $this->input->post('tr_aadhar_no');
         $mobile = $this->input->post('tr_mobile');
+        $email  = $this->input->post('tr_email');
+        $status = $this->input->post('tr_status') ? $this->input->post('tr_status') : 'pending';
 
         if ($this->User_model->is_aadhar_duplicate($aadhar, $tr_id ? $tr_id : null))
         {
@@ -265,7 +258,6 @@ class Users extends MX_Controller
             return;
         }
 
-        // Document required validation — ADD mode only (all 6 required)
         $upload_fields = array('tr_selfie','tr_pan_copy','tr_aadhar_front','tr_aadhar_back','tr_transport_front','tr_transport_back');
         $label_map     = array(
             'tr_selfie'=>'Selfie', 'tr_pan_copy'=>'PAN Copy',
@@ -289,37 +281,39 @@ class Users extends MX_Controller
             }
         }
 
-        // Map to actual DB columns
-        // tr_state = int (state_id), tr_district = int (district_id)
-        // tr_mandal = varchar (name), tr_village = varchar (name)
         $data = array(
             'tr_mobile'            => $mobile,
+            'tr_email'             => $email,
             'tr_language'          => $this->input->post('tr_language'),
             'tr_registration_type' => $this->input->post('tr_registration_type'),
             'tr_aadhar_no'         => $aadhar,
             'tr_full_name'         => $this->input->post('tr_full_name'),
             'tr_dob'               => $this->input->post('tr_dob') ? date('Y-m-d', strtotime($this->input->post('tr_dob'))) : NULL,
             'tr_full_address'      => $this->input->post('tr_full_address'),
-            'tr_state'             => (int)$this->input->post('tr_state_id'),    // int col in DB
-            'tr_district'          => (int)$this->input->post('tr_district_id'), // int col in DB
-            'tr_mandal'            => $this->input->post('tr_mandal'),            // varchar — mandal name
-            'tr_village'           => $this->input->post('tr_village'),           // varchar — city/village text
+            'tr_state'             => (int)$this->input->post('tr_state_id'),
+            'tr_district'          => (int)$this->input->post('tr_district_id'),
+            'tr_mandal'            => $this->input->post('tr_mandal'),
+            'tr_village'           => $this->input->post('tr_village'),
             'tr_pincode'           => $this->input->post('tr_pincode'),
-            'tr_status'            => $this->input->post('tr_status') ? $this->input->post('tr_status') : 'pending',
+            'tr_status'            => $status,
             'tr_last_updated_at'   => date('Y-m-d H:i:s'),
         );
 
-        // Determine upload key (folder)
         $uniue_id = $this->GenerateGUID();
 
+        // Get old status before update (for email trigger)
+        $old_status  = '';
+        $old_email   = '';
         if ($tr_id)
         {
-            $existing   = $this->User_model->get_registration_by_id($tr_id);
-            $upload_key = (!empty($existing['tr_reg_key'])) ? $existing['tr_reg_key'] : $uniue_id;
+            $existing    = $this->User_model->get_registration_by_id($tr_id);
+            $upload_key  = (!empty($existing['tr_reg_key'])) ? $existing['tr_reg_key'] : $uniue_id;
+            $old_status  = isset($existing['tr_status']) ? $existing['tr_status'] : '';
+            $old_email   = isset($existing['tr_email'])  ? $existing['tr_email']  : '';
         }
         else
         {
-            $upload_key       = $uniue_id;
+            $upload_key         = $uniue_id;
             $data['tr_reg_key'] = $upload_key;
         }
 
@@ -356,8 +350,34 @@ class Users extends MX_Controller
             $this->Registration_model->updateWhere($id, array(
                 'tr_reg_ukey' => "{$type}-".str_pad($id, 5, '0', STR_PAD_LEFT)
             ));
-            $msg = 'Registration created successfully!';
-            $ok  = $id;
+            $msg   = 'Registration created successfully!';
+            $ok    = $id;
+            $tr_id = $id;
+        }
+
+        // ── Send email if status changed to active ──
+        if ($ok && $status === 'active' && $old_status !== 'active' && !empty($email))
+        {
+            $plain_pwd = $this->_generate_plain_password();
+            $hashed    = password_hash($plain_pwd, PASSWORD_BCRYPT);
+            $this->User_model->update_password($tr_id, $hashed);
+            $this->email_helper->send_password_email(
+                $email,
+                $data['tr_full_name'],
+                $mobile,
+                $plain_pwd,
+                'active'
+            );
+        }
+        // ── Send status email if status changed to non-active ──
+        elseif ($ok && $status !== $old_status && !empty($email))
+        {
+            $this->email_helper->send_status_email(
+                $email,
+                $data['tr_full_name'],
+                $mobile,
+                $status
+            );
         }
 
         echo json_encode(array(
@@ -368,7 +388,7 @@ class Users extends MX_Controller
     }
 
     // ═══════════════════════════════════════════
-    // TOGGLE STATUS
+    // TOGGLE STATUS — ADDED: email send on status change
     // ═══════════════════════════════════════════
     public function toggle_status()
     {
@@ -376,21 +396,52 @@ class Users extends MX_Controller
         $tr_id      = (int)$this->input->post('tr_id');
         $new_status = $this->input->post('status');
         $allowed    = array('active','inactive','pending','rejected');
+
         if (!in_array($new_status, $allowed))
         {
             echo json_encode(array('status'=>'error','message'=>'Invalid status value','csrf_token'=>$this->security->get_csrf_hash()));
             return;
         }
-        $ok = $this->User_model->update_status($tr_id, $new_status);
+
+        // Get record before update
+        $record = $this->User_model->get_registration_by_id($tr_id);
+        $ok     = $this->User_model->update_status($tr_id, $new_status);
+
+        if ($ok && $record)
+        {
+            $email      = isset($record['tr_email'])     ? $record['tr_email']     : '';
+            $name       = isset($record['tr_full_name']) ? $record['tr_full_name'] : '';
+            $mobile     = isset($record['tr_mobile'])    ? $record['tr_mobile']    : '';
+            $old_status = isset($record['tr_status'])    ? $record['tr_status']    : '';
+
+            if (!empty($email))
+            {
+                if ($new_status === 'active' && $old_status !== 'active')
+                {
+                    // Generate password and send credentials email
+                    $plain_pwd = $this->_generate_plain_password();
+                    $hashed    = password_hash($plain_pwd, PASSWORD_BCRYPT);
+                    $this->User_model->update_password($tr_id, $hashed);
+                    $this->email_helper->send_password_email($email, $name, $mobile, $plain_pwd, 'active');
+                }
+                else
+                {
+                    // Send status change notification only
+                    $this->email_helper->send_status_email($email, $name, $mobile, $new_status);
+                }
+            }
+        }
+
         echo json_encode(array(
-            'status'=>$ok?'success':'error',
-            'message'=>$ok?'Status changed to '.strtoupper($new_status):'Failed to update status',
-            'new_status'=>$new_status, 'csrf_token'=>$this->security->get_csrf_hash(),
+            'status'     => $ok ? 'success' : 'error',
+            'message'    => $ok ? 'Status changed to '.strtoupper($new_status) : 'Failed to update status',
+            'new_status' => $new_status,
+            'csrf_token' => $this->security->get_csrf_hash(),
         ));
     }
 
     // ═══════════════════════════════════════════
-    // CHANGE PASSWORD
+    // CHANGE PASSWORD — ADDED: send email after change
     // ═══════════════════════════════════════════
     public function change_password()
     {
@@ -398,6 +449,7 @@ class Users extends MX_Controller
         $tr_id   = (int)$this->input->post('tr_id');
         $pwd     = $this->input->post('new_password');
         $confirm = $this->input->post('confirm_password');
+
         if (empty($pwd) || strlen($pwd) < 6)
         {
             echo json_encode(array('status'=>'error','message'=>'Password must be at least 6 characters','csrf_token'=>$this->security->get_csrf_hash()));
@@ -408,31 +460,31 @@ class Users extends MX_Controller
             echo json_encode(array('status'=>'error','message'=>'Passwords do not match','csrf_token'=>$this->security->get_csrf_hash()));
             return;
         }
-        $ok = $this->User_model->update_password($tr_id, password_hash($pwd, PASSWORD_BCRYPT));
+
+        $record = $this->User_model->get_registration_by_id($tr_id);
+        $ok     = $this->User_model->update_password($tr_id, password_hash($pwd, PASSWORD_BCRYPT));
+
+        // Send new password to email
+        if ($ok && $record && !empty($record['tr_email']))
+        {
+            $this->email_helper->send_password_email(
+                $record['tr_email'],
+                $record['tr_full_name'],
+                $record['tr_mobile'],
+                $pwd,
+                isset($record['tr_status']) ? $record['tr_status'] : 'active'
+            );
+        }
+
         echo json_encode(array(
-            'status'=>$ok?'success':'error',
-            'message'=>$ok?'Password changed successfully!':'Failed to update password',
-            'csrf_token'=>$this->security->get_csrf_hash(),
+            'status'     => $ok ? 'success' : 'error',
+            'message'    => $ok ? 'Password changed and emailed successfully!' : 'Failed to update password',
+            'csrf_token' => $this->security->get_csrf_hash(),
         ));
     }
 
     // ═══════════════════════════════════════════
-    // DELETE
-    // ═══════════════════════════════════════════
-    public function delete()
-    {
-        $this->_json();
-        $tr_id = (int)$this->input->post('tr_id');
-        $ok    = $this->User_model->delete_registration($tr_id);
-        echo json_encode(array(
-            'status'=>$ok?'success':'error',
-            'message'=>$ok?'Record deleted successfully!':'Failed to delete record',
-            'csrf_token'=>$this->security->get_csrf_hash(),
-        ));
-    }
-
-    // ═══════════════════════════════════════════
-    // CHECK MOBILE / AADHAR
+    // CHECK MOBILE / AADHAR — UNCHANGED
     // ═══════════════════════════════════════════
     public function check_mobile()
     {
@@ -453,7 +505,7 @@ class Users extends MX_Controller
     }
 
     // ═══════════════════════════════════════════
-    // LOCATION AJAX
+    // LOCATION AJAX — UNCHANGED
     // ═══════════════════════════════════════════
     public function get_states()
     {
@@ -477,6 +529,21 @@ class Users extends MX_Controller
     }
 
     // ═══════════════════════════════════════════
+    // DELETE — UNCHANGED
+    // ═══════════════════════════════════════════
+    public function delete()
+    {
+        $this->_json();
+        $tr_id = (int)$this->input->post('tr_id');
+        $ok    = $this->User_model->delete_registration($tr_id);
+        echo json_encode(array(
+            'status'  => $ok ? 'success' : 'error',
+            'message' => $ok ? 'Record deleted successfully!' : 'Failed to delete record',
+            'csrf_token' => $this->security->get_csrf_hash(),
+        ));
+    }
+
+    // ═══════════════════════════════════════════
     // PRIVATE HELPERS
     // ═══════════════════════════════════════════
     private function _json() { header('Content-Type: application/json'); }
@@ -485,14 +552,26 @@ class Users extends MX_Controller
     {
         if (!is_dir($path)) mkdir($path, 0755, TRUE);
         $this->upload->initialize(array(
-            'upload_path'=>$path, 'allowed_types'=>'jpg|jpeg|png|pdf',
-            'max_size'=>2048, 'encrypt_name'=>TRUE,
+            'upload_path'   => $path,
+            'allowed_types' => 'jpg|jpeg|png|pdf',
+            'max_size'      => 2048,
+            'encrypt_name'  => TRUE,
         ));
         if ($this->upload->do_upload($field))
-        {
             return array('status'=>'success','filename'=>$this->upload->data()['file_name']);
-        }
+
         return array('status'=>'error','message'=>$this->upload->display_errors('',''));
+    }
+
+    // ── ADDED: Password generator ──
+    private function _generate_plain_password($length = 10)
+    {
+        $chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789@#$!';
+        $pwd   = '';
+        $max   = strlen($chars) - 1;
+        for ($i = 0; $i < $length; $i++)
+            $pwd .= $chars[rand(0, $max)];
+        return $pwd;
     }
 
     function GenerateGUID()

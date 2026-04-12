@@ -81,8 +81,8 @@ class PHPMailer {
    * Sets the From email address for the message.
    * @var string
    */
-  public $From              = 'root@localhost';
-  //public $From              = 'contactlens@lvpei.org';
+  //public $From              = 'root@localhost';
+  public $From              = 'noreplytgtda@gmail.com';
 
   /**
    * Sets the From name of the message.

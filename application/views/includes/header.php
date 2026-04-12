@@ -220,10 +220,10 @@
                         <b class="logo-icon">
                             <!--You can put here icon as well // <i class="wi wi-sunset"></i> //-->
                             <!-- Dark Logo icon -->
-                            <img src="<?php echo base_url().'images/logo.jpg'?>" alt="Dashboard" class="dark-logo"  width="50px">
+                            <img src="<?php echo base_url().'images/logo.png'?>" alt="Dashboard" class="dark-logo"  width="50px">
                           
                             <!-- Light Logo icon -->
-                             <img src="<?php echo base_url().'images/logo.jpg'?>" alt="Dashboard" class="light-logo"  width="50px">
+                             <img src="<?php echo base_url().'images/logo.png'?>" alt="Dashboard" class="light-logo"  width="50px">
                           
                         </b>
                         <!--End Logo icon -->
@@ -233,7 +233,7 @@
                             
                                TGTDA
                             <!-- dark Logo text -->
-                               <!-- <img src="<?php echo base_url().'images/logo.jpg'?>" alt="Dashboard" class="dark-logo"  width="150px"> -->
+                               <!-- <img src="<?php echo base_url().'images/logo.png'?>" alt="Dashboard" class="dark-logo"  width="150px"> -->
                             <!-- Light Logo text -->
                                <!-- <img src="<?php echo base_url().'images/logo.png'?>" alt="Dashboard" class="light-logo"  width="200px"> -->
                         </span>
