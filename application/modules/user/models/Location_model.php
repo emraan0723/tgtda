@@ -44,6 +44,17 @@ class Location_model extends CI_Model {
     }
 
     // ─────────────────────────────────────────────
+    // Get ALL active districts (for table filter dropdown)
+    // ─────────────────────────────────────────────
+    public function get_all_districts() {
+        return $this->db
+            ->where('tdt_status', 'ACTIVE')
+            ->order_by('tdt_district_name', 'ASC')
+            ->get('tbl_district_masters')
+            ->result_array();
+    }
+
+    // ─────────────────────────────────────────────
     // Get cities by district ID
     // ─────────────────────────────────────────────
     public function get_cities_by_district($district_id) {

@@ -6,8 +6,8 @@ $config['tgtda_smtp_host']      = 'mail.tgtda.com';
 $config['tgtda_smtp_port']      = 465;                    // 465 = SSL
 
 // Credentials
-$config['tgtda_smtp_user']      = 'noreplytgtda@tgtda.com';
-$config['tgtda_smtp_pass']      = 'hCPBfdlemo^Q';
-$config['tgtda_smtp_from']      = 'noreplytgtda@tgtda.com';
+$config['tgtda_smtp_user']      = 'noreply@tgtda.com';
+$config['tgtda_smtp_pass']      = 'C(XBHzZ2LwZ6sakD';
+$config['tgtda_smtp_from']      = 'noreply@tgtda.com';
 $config['tgtda_smtp_from_name'] = 'TGTDA';
-$config['tgtda_smtp_debug']     = 0;
+$config['tgtda_smtp_debug']     = 3;

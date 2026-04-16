@@ -387,6 +387,21 @@
         </div>
 
         <button class="btn-signin" type="submit">Sign In &nbsp;→</button>
+
+        <a href="<?php echo base_url(); ?>"
+                style="display:inline-flex;align-items:center;gap:6px;margin-bottom:16px;
+          font-family:'Rajdhani',sans-serif;font-size:0.78rem;font-weight:600;
+          letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.45);
+          text-decoration:none;transition:color 0.2s;"
+                onmouseover="this.style.color='#e8185a'"
+                onmouseout="this.style.color='rgba(255,255,255,0.45)'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5"/>
+                <path d="M12 5l-7 7 7 7"/>
+            </svg>
+            Back
+        </a>
     </form>
 
     <div class="card-footer-text">

@@ -2,8 +2,11 @@
 if (!defined('BASEPATH')) exit('No direct script access allowed');
 
 /**
- * Users Controller — v4
+ * Users Controller — v5
  * Added: tr_email field, email send on activate, email on password change
+ * Added: tr_reg_ukey prefix fix on edit (DR-/TR- based on registration type)
+ * Added: filter_district + filter_mandal datatable filters
+ * Added: get_all_districts endpoint for filter dropdown
  * All existing logic unchanged.
  */
 class Users extends MX_Controller
@@ -62,13 +65,21 @@ class Users extends MX_Controller
         $order_col = isset($col_map[$col_idx]) ? $col_map[$col_idx] : 'tr_id';
         $order_dir = (isset($orders[0]['dir']) && strtoupper($orders[0]['dir']) === 'ASC') ? 'ASC' : 'DESC';
 
-        $filter_status = $this->input->post('filter_status') ? $this->input->post('filter_status') : '';
-        $filter_type   = $this->input->post('filter_type')   ? $this->input->post('filter_type')   : '';
+        $filter_status   = $this->input->post('filter_status')   ? $this->input->post('filter_status')   : '';
+        $filter_type     = $this->input->post('filter_type')     ? $this->input->post('filter_type')     : '';
+        $filter_district = $this->input->post('filter_district') ? $this->input->post('filter_district') : '';
+        $filter_mandal   = $this->input->post('filter_mandal')   ? $this->input->post('filter_mandal')   : '';
 
         $params = array(
-            'start'=>$start, 'length'=>$length, 'search'=>$search,
-            'order_col'=>$order_col, 'order_dir'=>$order_dir,
-            'filter_status'=>$filter_status, 'filter_type'=>$filter_type,
+            'start'           => $start,
+            'length'          => $length,
+            'search'          => $search,
+            'order_col'       => $order_col,
+            'order_dir'       => $order_dir,
+            'filter_status'   => $filter_status,
+            'filter_type'     => $filter_type,
+            'filter_district' => $filter_district,
+            'filter_mandal'   => $filter_mandal,
         );
 
         $rows           = $this->User_model->datatable_data($params);
@@ -212,7 +223,9 @@ class Users extends MX_Controller
     }
 
     // ═══════════════════════════════════════════
-    // SAVE — ADDED: tr_email field + send email on activate
+    // SAVE
+    // Added: tr_email field + send email on activate
+    // Added: tr_reg_ukey prefix fix on edit
     // ═══════════════════════════════════════════
     public function save()
     {
@@ -222,6 +235,7 @@ class Users extends MX_Controller
 
         $this->form_validation->set_rules('tr_mobile',            'Mobile No',   'required|numeric|min_length[10]|max_length[10]');
         $this->form_validation->set_rules('tr_aadhar_no',         'Aadhar No',   'required|min_length[12]|max_length[12]');
+        $this->form_validation->set_rules('tr_pan_no',            'PAN No',      'required|min_length[10]|max_length[10]|regex_match[/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/]');
         $this->form_validation->set_rules('tr_language',          'Language',    'required');
         $this->form_validation->set_rules('tr_registration_type', 'Reg. Type',   'required');
         $this->form_validation->set_rules('tr_full_name',         'Full Name',   'required');
@@ -284,6 +298,7 @@ class Users extends MX_Controller
         $data = array(
             'tr_mobile'            => $mobile,
             'tr_email'             => $email,
+            'tr_pan_no'            => strtoupper($this->input->post('tr_pan_no')),
             'tr_language'          => $this->input->post('tr_language'),
             'tr_registration_type' => $this->input->post('tr_registration_type'),
             'tr_aadhar_no'         => $aadhar,
@@ -300,10 +315,12 @@ class Users extends MX_Controller
         );
 
         $uniue_id = $this->GenerateGUID();
+        $type     = ($data['tr_registration_type'] === 'TRANSPORT') ? 'TR' : 'DR';
 
-        // Get old status before update (for email trigger)
+        // Get old record before update (for email trigger + ukey fix)
         $old_status  = '';
         $old_email   = '';
+        $existing    = array();
         if ($tr_id)
         {
             $existing    = $this->User_model->get_registration_by_id($tr_id);
@@ -319,8 +336,6 @@ class Users extends MX_Controller
 
         $upload_path = FCPATH.'uploads/registration/'.$upload_key.'/';
         if (!is_dir($upload_path)) mkdir($upload_path, 0755, true);
-
-        $type = ($data['tr_registration_type'] === 'TRANSPORT') ? 'TR' : 'DR';
 
         foreach ($upload_fields as $field)
         {
@@ -339,6 +354,20 @@ class Users extends MX_Controller
 
         if ($tr_id)
         {
+            // ── Fix tr_reg_ukey prefix when registration type changes ──
+            // Extract the numeric part from the existing ukey and rebuild with correct prefix
+            $existing_ukey = isset($existing['tr_reg_ukey']) ? $existing['tr_reg_ukey'] : '';
+            if (preg_match('/(\d+)$/', $existing_ukey, $m))
+            {
+                // Preserve original zero-padded number
+                $ukey_number = $m[1];
+            }
+            else
+            {
+                $ukey_number = str_pad($tr_id, 5, '0', STR_PAD_LEFT);
+            }
+            $data['tr_reg_ukey'] = $type . '-' . $ukey_number;
+
             $ok  = $this->User_model->update_registration($tr_id, $data);
             $msg = 'Registration updated successfully!';
         }
@@ -369,8 +398,9 @@ class Users extends MX_Controller
                 'active'
             );
         }
+
         // ── Send status email if status changed to non-active ──
-        elseif ($ok && $status !== $old_status && !empty($email))
+        /* elseif ($ok && $status !== $old_status && !empty($email))
         {
             $this->email_helper->send_status_email(
                 $email,
@@ -378,7 +408,7 @@ class Users extends MX_Controller
                 $mobile,
                 $status
             );
-        }
+        }*/
 
         echo json_encode(array(
             'status'     => $ok ? 'success' : 'error',
@@ -388,7 +418,7 @@ class Users extends MX_Controller
     }
 
     // ═══════════════════════════════════════════
-    // TOGGLE STATUS — ADDED: email send on status change
+    // TOGGLE STATUS — sends email on status change
     // ═══════════════════════════════════════════
     public function toggle_status()
     {
@@ -441,7 +471,7 @@ class Users extends MX_Controller
     }
 
     // ═══════════════════════════════════════════
-    // CHANGE PASSWORD — ADDED: send email after change
+    // CHANGE PASSWORD — sends email after change
     // ═══════════════════════════════════════════
     public function change_password()
     {
@@ -529,6 +559,16 @@ class Users extends MX_Controller
     }
 
     // ═══════════════════════════════════════════
+    // GET ALL DISTRICTS — for filter dropdown
+    // ═══════════════════════════════════════════
+    public function get_all_districts()
+    {
+        $this->_json();
+        $districts = $this->Location_model->get_all_districts();
+        echo json_encode(array('status'=>'success','data'=>$districts,'csrf_token'=>$this->security->get_csrf_hash()));
+    }
+
+    // ═══════════════════════════════════════════
     // DELETE — UNCHANGED
     // ═══════════════════════════════════════════
     public function delete()
@@ -563,7 +603,6 @@ class Users extends MX_Controller
         return array('status'=>'error','message'=>$this->upload->display_errors('',''));
     }
 
-    // ── ADDED: Password generator ──
     private function _generate_plain_password($length = 10)
     {
         $chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789@#$!';

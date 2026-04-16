@@ -11,7 +11,7 @@
                     <span class="hide-menu"></span></li>
 
                 <li class="sidebar-item">
-                    <a class="sidebar-link <?php echo ($this->router->fetch_class() == 'dashboard') ? 'active open' : '' ?>  waves-effect waves-dark" href="<?php echo base_url().'dashboard'; ?>" aria-expanded="false"><i class="mdi mdi-gauge"></i><span class="hide-menu">Dashboard </span></a>
+                    <a class="sidebar-link <?php echo ($this->router->fetch_class() == 'dashboard') ? 'active open' : '' ?>  waves-effect waves-dark" href="<?php echo base_url().'user_dashboard'; ?>" aria-expanded="false"><i class="mdi mdi-gauge"></i><span class="hide-menu">Dashboard </span></a>
 
 
                 </li>

@@ -89,12 +89,12 @@
     .form-alert{border-radius:10px;padding:10px 16px;font-size:.83rem;font-weight:600;margin-bottom:12px;display:none;}
     .form-alert.alert-success{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;}
     .form-alert.alert-error{background:#fef2f2;color:#991b1b;border:1px solid #fecaca;}
-    /* ── Field error highlight ── */
     .field-error{border-color:var(--danger)!important;box-shadow:0 0 0 3px rgba(239,68,68,.15)!important;background:#fff5f5!important;}
     .field-error-msg{font-size:.71rem;color:var(--danger);font-weight:600;margin-top:3px;display:block;}
     .doc-upload-box.field-error{border-color:var(--danger)!important;border-style:solid!important;background:#fff5f5!important;box-shadow:0 0 0 3px rgba(239,68,68,.15)!important;}
     .doc-upload-box.field-error i{color:var(--danger)!important;}
     .input-group .field-error{z-index:1;}
+    .pan-hint{font-size:.68rem;color:var(--muted);margin-top:3px;}
     .loc-loading{font-size:.72rem;color:var(--primary);display:none;}
     .loc-loading.show{display:inline;}
     .field-checking{border-color:#94a3b8!important;background:#f8fafc!important;}
@@ -112,8 +112,9 @@
     .unlock-warn.show{display:inline-block;}
     .btn-primary{color:#fff;background-color:#1e88e5;border-color:#1e88e5;}
     .btn-primary:hover{color:#fff;background-color:#1a7bd0;border-color:#1a7bd0;}
-    /* Email info box */
     .email-info-box{background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:7px 12px;font-size:.72rem;color:#0369a1;display:flex;align-items:center;gap:6px;margin-top:5px;}
+    /* ── Filter dropdowns loading state ── */
+    .filter-loading{opacity:.6;pointer-events:none;}
     @keyframes spin{to{transform:rotate(360deg);}}
     .spin{display:inline-block;animation:spin .7s linear infinite;}
 </style>
@@ -160,6 +161,8 @@ $countries = isset($countries) ? $countries : array();
                         <h6>All Registrations</h6>
                         <small class="text-muted ml-1" id="recordInfo"></small>
                         <div class="ml-auto d-flex flex-wrap" style="gap:8px">
+
+                            <!-- Status Filter -->
                             <select class="form-control form-control-sm" id="filterStatus" style="width:130px;height:34px;" onchange="reloadTable()">
                                 <option value="">All Status</option>
                                 <option value="pending">Pending</option>
@@ -167,11 +170,27 @@ $countries = isset($countries) ? $countries : array();
                                 <option value="inactive">Inactive</option>
                                 <option value="rejected">Rejected</option>
                             </select>
+
+                            <!-- Type Filter -->
                             <select class="form-control form-control-sm" id="filterType" style="width:130px;height:34px;" onchange="reloadTable()">
                                 <option value="">All Types</option>
                                 <option value="DRIVER">Driver</option>
                                 <option value="TRANSPORT">Transport</option>
                             </select>
+
+                            <!-- District Filter — populated via AJAX on page load -->
+                            <select class="form-control form-control-sm" id="filterDistrict" style="width:150px;height:34px;" onchange="onFilterDistrictChange()">
+                                <option value="">All Districts</option>
+                            </select>
+
+                            <!-- Mandal Filter — populated when district is selected -->
+                            <select class="form-control form-control-sm" id="filterMandal" style="width:150px;height:34px;" onchange="reloadTable()" disabled>
+                                <option value="">All Mandals</option>
+                            </select>
+
+                            <button class="btn btn-outline-secondary btn-sm" onclick="clearFilters()" title="Clear Filters">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
                             <button class="btn btn-outline-secondary btn-sm" onclick="reloadTable()" title="Refresh">
                                 <i class="bi bi-arrow-clockwise"></i>
                             </button>
@@ -296,7 +315,7 @@ $countries = isset($countries) ? $countries : array();
                             </div>
                         </div>
 
-                        <!-- ── ADDED: Email field ── -->
+                        <!-- Email field -->
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label class="form-label">Email Address <span class="text-danger">*</span></label>
@@ -310,8 +329,6 @@ $countries = isset($countries) ? $countries : array();
                                 </div>
                             </div>
                         </div>
-                        <!-- ── END Email field ── -->
-
                     </div>
 
                     <!-- Personal Details -->
@@ -321,6 +338,20 @@ $countries = isset($countries) ? $countries : array();
                             <div class="form-group">
                                 <label class="form-label">Full Name (as per Aadhar)</label>
                                 <input type="text" class="form-control" id="tr_full_name" name="tr_full_name" placeholder="Full name">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="form-label">PAN Card No <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend"><span class="input-group-text"><i class="bi bi-credit-card-2-front"></i></span></div>
+                                    <input type="text" class="form-control" id="tr_pan_no" name="tr_pan_no"
+                                            maxlength="10" placeholder="ABCDE1234F"
+                                            style="font-family:monospace;text-transform:uppercase;letter-spacing:1px"
+                                            oninput="this.value=this.value.toUpperCase();panLiveCheck(this)">
+                                </div>
+                                <div class="pan-hint"><i class="bi bi-info-circle"></i> Format: 5 letters &bull; 4 digits &bull; 1 letter &nbsp;(e.g. ABCDE1234F)</div>
+                                <div id="pan_msg" class="field-msg"></div>
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -498,7 +529,6 @@ $countries = isset($countries) ? $countries : array();
                         <button class="toggle-pwd" type="button" onclick="togglePwd('confirm_password',this)"><i class="bi bi-eye"></i></button>
                     </div>
                 </div>
-                <!-- Email notice -->
                 <div class="email-info-box mt-2">
                     <i class="bi bi-envelope-check-fill"></i>
                     New password will be automatically sent to the driver's registered email.
@@ -571,7 +601,14 @@ $countries = isset($countries) ? $countries : array();
             lengthMenu:[[10,25,50,100],[10,25,50,100]],
             ajax:{
                 url:BASE_URL+'datatableajax', type:'POST',
-                data:function(d){ d[CSRF_NAME]=Csrf.get(); d.filter_status=$('#filterStatus').val(); d.filter_type=$('#filterType').val(); return d; },
+                data:function(d){
+                    d[CSRF_NAME]        = Csrf.get();
+                    d.filter_status     = $('#filterStatus').val();
+                    d.filter_type       = $('#filterType').val();
+                    d.filter_district   = $('#filterDistrict').val();
+                    d.filter_mandal     = $('#filterMandal').val();
+                    return d;
+                },
                 dataSrc:function(json){ if(json&&json.csrf_token) Csrf.update(json.csrf_token); $('#recordInfo').text('Showing '+(json.recordsFiltered||0)+' of '+(json.recordsTotal||0)+' records'); return json.data||[]; },
                 error:function(){ showToast('Failed to load table data.','error'); }
             },
@@ -589,9 +626,74 @@ $countries = isset($countries) ? $countries : array();
             },
             drawCallback:function(){ bindSelfieHover(); }
         });
+
+        // Load all districts for filter dropdown on page load
+        loadFilterDistricts();
     });
 
     function reloadTable(){ if(dt) dt.ajax.reload(null,false); }
+
+    // ── CLEAR ALL FILTERS ──
+    function clearFilters(){
+        document.getElementById('filterStatus').value   = '';
+        document.getElementById('filterType').value     = '';
+        document.getElementById('filterDistrict').value = '';
+        var mandalSel = document.getElementById('filterMandal');
+        mandalSel.innerHTML = '<option value="">All Mandals</option>';
+        mandalSel.disabled  = true;
+        reloadTable();
+    }
+
+    // ── FILTER: Load all districts for the filter dropdown on page load ──
+    function loadFilterDistricts(){
+        var fd = new FormData();
+        fd.append(CSRF_NAME, Csrf.get());
+        $.ajax({
+            url: BASE_URL + 'get_all_districts',
+            type: 'POST',
+            data: fd,
+            processData: false,
+            contentType: false,
+            success: function(res){
+                if(res && res.csrf_token) Csrf.update(res.csrf_token);
+                var sel = document.getElementById('filterDistrict');
+                if(!sel || !res.data) return;
+                res.data.forEach(function(d){
+                    var opt = document.createElement('option');
+                    opt.value       = d.tdt_district_ID;
+                    opt.textContent = d.tdt_district_name;
+                    sel.appendChild(opt);
+                });
+            }
+        });
+    }
+
+    // ── FILTER: When district changes, load its mandals ──
+    function onFilterDistrictChange(){
+        var distId    = document.getElementById('filterDistrict').value;
+        var mandalSel = document.getElementById('filterMandal');
+
+        // Reset mandal dropdown
+        mandalSel.innerHTML = '<option value="">All Mandals</option>';
+        mandalSel.disabled  = true;
+
+        // Reload table immediately with just the district filter
+        reloadTable();
+
+        if(!distId) return;
+
+        // Load mandals for selected district
+        ajaxPost(BASE_URL+'get_mandals', {district_id: distId}, function(res){
+            (res.data || []).forEach(function(m){
+                var opt = document.createElement('option');
+                // Use mandal name as value — matches tr_mandal column (stores name, not ID)
+                opt.value       = m.tm_mandal;
+                opt.textContent = m.tm_mandal;
+                mandalSel.appendChild(opt);
+            });
+            if(mandalSel.options.length > 1) mandalSel.disabled = false;
+        });
+    }
 
     // ── SELFIE HOVER ──
     function bindSelfieHover(){
@@ -776,8 +878,7 @@ $countries = isset($countries) ? $countries : array();
             lockAadhar(true);
             ajaxPost(BASE_URL+'get_registration',{tr_id:tr_id},function(res){
                 var r=res.data; if(!r) return;
-                // ── ADDED tr_email to fields list ──
-                var fields=['tr_mobile','tr_language','tr_registration_type','tr_aadhar_no','tr_full_name','tr_dob','tr_full_address','tr_pincode','tr_status','tr_email'];
+                var fields=['tr_mobile','tr_language','tr_registration_type','tr_aadhar_no','tr_full_name','tr_pan_no','tr_dob','tr_full_address','tr_pincode','tr_status','tr_email'];
                 for(var i=0;i<fields.length;i++){ var f=fields[i],el=document.getElementById(f); if(el&&r[f]!==undefined&&r[f]!==null) el.value=r[f]; }
                 document.getElementById('tr_mobile')._origVal=r['tr_mobile']||'';
                 document.getElementById('tr_aadhar_no')._origVal=r['tr_aadhar_no']||'';
@@ -807,7 +908,6 @@ $countries = isset($countries) ? $countries : array();
         document.getElementById('tr_id').value='';
         document.getElementById('reg_csrf_field').value=Csrf.get();
         hideFormAlert();
-        // Clear all field-level error highlights and messages
         var errEls=document.querySelectorAll('#regForm .field-error');
         for(var i=0;i<errEls.length;i++) errEls[i].classList.remove('field-error');
         var errMsgs=document.querySelectorAll('#regForm .field-error-msg');
@@ -815,6 +915,7 @@ $countries = isset($countries) ? $countries : array();
         clearFieldState('tr_mobile'); clearFieldState('tr_aadhar_no');
         document.getElementById('mobile_msg').className='field-msg'; document.getElementById('mobile_msg').textContent='';
         document.getElementById('aadhar_msg').className='field-msg'; document.getElementById('aadhar_msg').textContent='';
+        document.getElementById('pan_msg').className='field-msg';    document.getElementById('pan_msg').textContent='';
         lockAadhar(false);
         document.getElementById('aadhar_unlock_row').classList.add('d-none');
         document.getElementById('aadhar_unlock_warn').classList.remove('show');
@@ -823,7 +924,7 @@ $countries = isset($countries) ? $countries : array();
         var els=document.querySelectorAll('[id^="prev_"],[id^="view_"]');
         for(var i=0;i<els.length;i++){ els[i].classList.add('d-none'); if(els[i].tagName==='IMG') els[i].src=''; if(els[i].tagName==='BUTTON') els[i].setAttribute('data-url',''); }
         var docBoxes=document.querySelectorAll('.doc-upload-box');
-        for(var i=0;i<docBoxes.length;i++) docBoxes[i].classList.remove('doc-required');
+        for(var i=0;i<docBoxes.length;i++) docBoxes[i].classList.remove('doc-required','field-error');
         var reqMsgs=document.querySelectorAll('.doc-req-msg');
         for(var i=0;i<reqMsgs.length;i++) reqMsgs[i].classList.remove('show');
     }
@@ -832,50 +933,43 @@ $countries = isset($countries) ? $countries : array();
     function showFormAlert(msg,type,alertId){ alertId=alertId||'formAlert'; var el=document.getElementById(alertId); if(!el) return; el.textContent=msg; el.className='form-alert alert-'+(type==='success'?'success':'error'); el.style.display='block'; if(type==='success') setTimeout(function(){ hideFormAlert(alertId); },4000); }
     function hideFormAlert(alertId){ alertId=alertId||'formAlert'; var el=document.getElementById(alertId); if(el){ el.style.display='none'; el.textContent=''; } }
 
-    // ── FIELD ERROR HELPERS ──
-    function markError(el, msg) {
-        if (!el) return;
-        // For input-group, highlight the input inside
-        el.classList.add('field-error');
-        // Remove any old error msg
-        var next = el.parentNode.querySelector('.field-error-msg');
-        if (!next) { next = document.createElement('div'); next.className = 'field-error-msg'; el.parentNode.appendChild(next); }
-        next.textContent = msg || '';
-        // Clear on next user interaction
-        function clearOnInput() {
-            el.classList.remove('field-error');
-            if (next && next.parentNode) next.parentNode.removeChild(next);
-            el.removeEventListener('input', clearOnInput);
-            el.removeEventListener('change', clearOnInput);
+    // ── PAN LIVE FORMAT CHECK ──
+    var PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+    function panLiveCheck(inp){
+        var val = inp.value.trim();
+        var msgEl = document.getElementById('pan_msg');
+        inp.classList.remove('field-error');
+        var n = inp.parentNode ? inp.parentNode.querySelector('.field-error-msg') : null;
+        if(n && n.parentNode) n.parentNode.removeChild(n);
+        if(!val){ msgEl.className='field-msg'; msgEl.textContent=''; return; }
+        if(val.length < 10){ msgEl.className='field-msg'; msgEl.textContent=''; return; }
+        if(PAN_REGEX.test(val)){
+            msgEl.className='field-msg show-ok'; msgEl.innerHTML='&#10003; Valid PAN format';
+        } else {
+            msgEl.className='field-msg show-err'; msgEl.innerHTML='&#9888; Invalid format — must be like ABCDE1234F';
         }
-        el.addEventListener('input', clearOnInput);
-        el.addEventListener('change', clearOnInput);
-        // Scroll + focus
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setTimeout(function () { try { el.focus(); } catch(e){} }, 350);
     }
-    function markSelectError(selId, msg) {
-        var el = document.getElementById(selId);
+
+    // ── FIELD ERROR HELPER ──
+    function _fail(el, msg, isSelect, hasErrorRef, firstErrRef) {
+        hasErrorRef[0] = true;
+        if (!firstErrRef[0]) firstErrRef[0] = el;
         if (!el) return;
         el.classList.add('field-error');
         var wrap = el.parentNode;
-        var next = wrap.querySelector('.field-error-msg');
-        if (!next) { next = document.createElement('div'); next.className = 'field-error-msg'; wrap.appendChild(next); }
-        next.textContent = msg || '';
-        function clearOnChange() {
-            el.classList.remove('field-error');
-            if (next && next.parentNode) next.parentNode.removeChild(next);
-            el.removeEventListener('change', clearOnChange);
-        }
-        el.addEventListener('change', clearOnChange);
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setTimeout(function () { try { el.focus(); } catch(e){} }, 350);
+        var n = wrap ? wrap.querySelector('.field-error-msg') : null;
+        if (!n && wrap) { n = document.createElement('div'); n.className='field-error-msg'; wrap.appendChild(n); }
+        if (n) n.textContent = msg || '';
+        var ev = isSelect ? 'change' : 'input';
+        function clr(){ el.classList.remove('field-error'); if(n&&n.parentNode) n.parentNode.removeChild(n); el.removeEventListener(ev,clr); el.removeEventListener('change',clr); }
+        el.addEventListener(ev, clr);
+        if(!isSelect) el.addEventListener('change', clr);
     }
-    function clearAllFieldErrors() {
-        var els = document.querySelectorAll('#regForm .field-error');
-        for (var i = 0; i < els.length; i++) els[i].classList.remove('field-error');
-        var msgs = document.querySelectorAll('#regForm .field-error-msg');
-        for (var i = 0; i < msgs.length; i++) if (msgs[i].parentNode) msgs[i].parentNode.removeChild(msgs[i]);
+    function clearAllFieldErrors(){
+        var els=document.querySelectorAll('#regForm .field-error');
+        for(var i=0;i<els.length;i++) els[i].classList.remove('field-error');
+        var msgs=document.querySelectorAll('#regForm .field-error-msg');
+        for(var i=0;i<msgs.length;i++) if(msgs[i].parentNode) msgs[i].parentNode.removeChild(msgs[i]);
     }
 
     // ── SAVE REGISTRATION ──
@@ -889,6 +983,7 @@ $countries = isset($countries) ? $countries : array();
         var rtypeEl   = document.getElementById('tr_registration_type');
         var emailEl   = document.getElementById('tr_email');
         var nameEl    = document.getElementById('tr_full_name');
+        var panEl     = document.getElementById('tr_pan_no');
         var aadharEl  = document.getElementById('tr_aadhar_no');
         var dobEl     = document.getElementById('tr_dob');
         var addrEl    = document.getElementById('tr_full_address');
@@ -903,6 +998,7 @@ $countries = isset($countries) ? $countries : array();
         var rtype    = rtypeEl   ? rtypeEl.value           : '';
         var email    = emailEl   ? emailEl.value.trim()    : '';
         var fullName = nameEl    ? nameEl.value.trim()     : '';
+        var pan      = panEl     ? panEl.value.trim()      : '';
         var aadhar   = aadharEl  ? aadharEl.value.trim()  : '';
         var dob      = dobEl     ? dobEl.value             : '';
         var address  = addrEl    ? addrEl.value.trim()     : '';
@@ -912,19 +1008,9 @@ $countries = isset($countries) ? $countries : array();
         var village  = villageEl ? villageEl.value.trim()  : '';
         var pincode  = pincodeEl ? pincodeEl.value.trim()  : '';
 
-        // Validate all fields — collect ALL errors first, then stop
-        var hasError = false;
-        var firstErrorEl = null;
-
-        function fail(el, msg, isSelect) {
-            hasError = true;
-            if (!firstErrorEl) firstErrorEl = el;
-            if (isSelect) {
-                if(el) { el.classList.add('field-error'); var w=el.parentNode; var n=w.querySelector('.field-error-msg'); if(!n){n=document.createElement('div');n.className='field-error-msg';w.appendChild(n);} n.textContent=msg||''; el.addEventListener('change',function c(){el.classList.remove('field-error');if(n&&n.parentNode)n.parentNode.removeChild(n);el.removeEventListener('change',c);},false); }
-            } else {
-                if(el) { el.classList.add('field-error'); var w=el.parentNode; var n=w.querySelector('.field-error-msg'); if(!n){n=document.createElement('div');n.className='field-error-msg';w.appendChild(n);} n.textContent=msg||''; function clr(){el.classList.remove('field-error');if(n&&n.parentNode)n.parentNode.removeChild(n);el.removeEventListener('input',clr);el.removeEventListener('change',clr);} el.addEventListener('input',clr); el.addEventListener('change',clr); }
-            }
-        }
+        var hasErr = [false];
+        var firstEl = [null];
+        function fail(el, msg, isSel){ _fail(el, msg, isSel||false, hasErr, firstEl); }
 
         if (!mobile || mobile.length !== 10 || isNaN(mobile))
             fail(mobileEl, 'Must be exactly 10 digits');
@@ -936,6 +1022,10 @@ $countries = isset($countries) ? $countries : array();
             fail(emailEl, 'Valid email address required');
         if (!fullName)
             fail(nameEl, 'Full name is required');
+        if (!pan)
+            fail(panEl, 'PAN card number is required');
+        else if (!PAN_REGEX.test(pan))
+            fail(panEl, 'Invalid format — must be like ABCDE1234F (5 letters, 4 digits, 1 letter)');
         if (!aadhar || aadhar.length !== 12)
             fail(aadharEl, 'Must be exactly 12 digits');
         if (!dob)
@@ -953,61 +1043,52 @@ $countries = isset($countries) ? $countries : array();
         if (!pincode || pincode.length !== 6 || isNaN(pincode))
             fail(pincodeEl, 'Must be exactly 6 digits');
 
-        if (hasError) {
+        if (hasErr[0]) {
             showFormAlert('Please fill all required fields highlighted in red.', 'error');
-            if (firstErrorEl) {
-                firstErrorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                setTimeout(function () { try { firstErrorEl.focus(); } catch(e){} }, 350);
+            if (firstEl[0]) {
+                firstEl[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(function(){ try{ firstEl[0].focus(); }catch(e){} }, 350);
             }
             return;
         }
 
-        // Documents — only required on Add
         var isAdd = !document.getElementById('tr_id').value;
         if (isAdd) {
             var docRequired = [
-                {id:'f_selfie', label:'Selfie'},
-                {id:'f_pan',    label:'PAN Copy'},
-                {id:'f_adf',    label:'Aadhar Front'},
-                {id:'f_adb',    label:'Aadhar Back'},
-                {id:'f_trf',    label:'Transport/DL Front'},
-                {id:'f_trb',    label:'Transport/DL Back'}
+                {id:'f_selfie',label:'Selfie'},{id:'f_pan',label:'PAN Copy'},
+                {id:'f_adf',label:'Aadhar Front'},{id:'f_adb',label:'Aadhar Back'},
+                {id:'f_trf',label:'Transport/DL Front'},{id:'f_trb',label:'Transport/DL Back'}
             ];
-            // Clear old doc errors
-            for (var d = 0; d < docRequired.length; d++) {
-                var bx = document.getElementById('box_' + docRequired[d].id);
-                var rm = document.getElementById('req_' + docRequired[d].id);
-                if (bx) { bx.classList.remove('doc-required'); bx.classList.remove('field-error'); }
-                if (rm) rm.classList.remove('show');
+            for(var d=0;d<docRequired.length;d++){
+                var bx=document.getElementById('box_'+docRequired[d].id);
+                var rm=document.getElementById('req_'+docRequired[d].id);
+                if(bx){ bx.classList.remove('doc-required','field-error'); }
+                if(rm) rm.classList.remove('show');
             }
             var firstMissingBox = null;
-            for (var d = 0; d < docRequired.length; d++) {
-                var fileEl = document.getElementById(docRequired[d].id);
-                if (!fileEl || !fileEl.files || !fileEl.files.length) {
-                    var bx = document.getElementById('box_' + docRequired[d].id);
-                    var rm = document.getElementById('req_' + docRequired[d].id);
-                    if (bx) {
-                        bx.classList.add('doc-required');
-                        bx.classList.add('field-error');
-                        if (!firstMissingBox) firstMissingBox = bx;
-                    }
-                    if (rm) rm.classList.add('show');
+            for(var d=0;d<docRequired.length;d++){
+                var fileEl=document.getElementById(docRequired[d].id);
+                if(!fileEl||!fileEl.files||!fileEl.files.length){
+                    var bx=document.getElementById('box_'+docRequired[d].id);
+                    var rm=document.getElementById('req_'+docRequired[d].id);
+                    if(bx){ bx.classList.add('doc-required','field-error'); if(!firstMissingBox) firstMissingBox=bx; }
+                    if(rm) rm.classList.add('show');
                 }
             }
-            if (firstMissingBox) {
-                showFormAlert('Please upload all required documents (highlighted in red).', 'error');
-                setTimeout(function () { firstMissingBox.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 150);
+            if(firstMissingBox){
+                showFormAlert('Please upload all required documents (highlighted in red).','error');
+                setTimeout(function(){ firstMissingBox.scrollIntoView({behavior:'smooth',block:'center'}); },150);
                 return;
             }
         }
 
-        if (hasDuplicateFields()) return;
+        if(hasDuplicateFields()) return;
 
         setLoading(btn, true);
         var fd = new FormData(document.getElementById('regForm'));
-        ajaxPost(BASE_URL + 'save', fd,
-            function (res) { setLoading(btn, false); showFormAlert(res.message, 'success'); showToast(res.message, 'success'); setTimeout(function () { $('#regModal').modal('hide'); dt.ajax.reload(null, false); }, 1200); },
-            function (res) { setLoading(btn, false); var msg = (res && res.message) ? res.message : 'An error occurred. Please try again.'; showFormAlert(msg, 'error'); showToast(msg, 'error'); }
+        ajaxPost(BASE_URL+'save', fd,
+            function(res){ setLoading(btn,false); showFormAlert(res.message,'success'); showToast(res.message,'success'); setTimeout(function(){ $('#regModal').modal('hide'); dt.ajax.reload(null,false); },1200); },
+            function(res){ setLoading(btn,false); var msg=(res&&res.message)?res.message:'An error occurred. Please try again.'; showFormAlert(msg,'error'); showToast(msg,'error'); }
         );
     }
 

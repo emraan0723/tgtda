@@ -44,6 +44,8 @@ class User_model extends CI_Model {
     }
 
     // ─────────────────────────────────────────────
+    // ADDED: filter_district and filter_mandal support
+    // ─────────────────────────────────────────────
     private function _apply_filters($p = array()) {
 
         if (isset($p['filter_status']) && $p['filter_status'] != '') {
@@ -52,6 +54,16 @@ class User_model extends CI_Model {
 
         if (isset($p['filter_type']) && $p['filter_type'] != '') {
             $this->db->where('tr_registration_type', strtoupper($p['filter_type']));
+        }
+
+        // District filter — tr_district stores the district ID (integer)
+        if (isset($p['filter_district']) && $p['filter_district'] != '') {
+            $this->db->where('tr_district', (int)$p['filter_district']);
+        }
+
+        // Mandal filter — tr_mandal stores the mandal name (string)
+        if (isset($p['filter_mandal']) && $p['filter_mandal'] != '') {
+            $this->db->where('tr_mandal', $p['filter_mandal']);
         }
 
         if (isset($p['search']) && $p['search'] != '') {
@@ -147,9 +159,6 @@ class User_model extends CI_Model {
     // DUPLICATE CHECKS
     // ─────────────────────────────────────────────
 
-    /**
-     * Check if Aadhar already exists (optionally excluding a record by ID for edit mode)
-     */
     public function is_aadhar_duplicate($aadhar, $exclude_id = null) {
 
         $this->db->where('tr_aadhar_no', $aadhar);
@@ -161,9 +170,6 @@ class User_model extends CI_Model {
         return $this->db->count_all_results($this->table) > 0;
     }
 
-    /**
-     * Check if Mobile already exists (optionally excluding a record by ID for edit mode)
-     */
     public function is_mobile_duplicate($mobile, $exclude_id = null) {
 
         $this->db->where('tr_mobile', $mobile);

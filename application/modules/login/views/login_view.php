@@ -589,6 +589,17 @@
 
         <!-- RIGHT: Login Form -->
         <div class="form-panel">
+            <!-- ADMIN BADGE -->
+            <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(232,24,90,0.15);
+     border:1px solid rgba(232,24,90,0.35);color:#ff8ab4;border-radius:20px;
+     padding:4px 12px;font-size:0.62rem;font-weight:600;letter-spacing:2px;
+     text-transform:uppercase;margin-bottom:12px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                Admin Login
+            </div>
             <div class="form-heading">Welcome Back</div>
             <div class="form-sub">Sign in to your TGTDA member portal</div>
             <div class="form-sep"></div>
@@ -635,6 +646,17 @@
                     </button>
                     <a href="Registration" class="btn-register">Register as Member</a>
                 </div>
+
+                <!-- MEMBER LOGIN BUTTON -->
+                <a href="<?php echo base_url(); ?>user_login" class="btn-register"
+                        style="display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    Member Login
+                </a>
             </form>
 
             <div class="form-footer">
