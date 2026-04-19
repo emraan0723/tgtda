@@ -2,12 +2,13 @@
 if (!defined('BASEPATH')) exit('No direct script access allowed');
 
 /**
- * Users Controller — v5
- * Added: tr_email field, email send on activate, email on password change
- * Added: tr_reg_ukey prefix fix on edit (DR-/TR- based on registration type)
- * Added: filter_district + filter_mandal datatable filters
- * Added: get_all_districts endpoint for filter dropdown
- * All existing logic unchanged.
+ * Users Controller — v6
+ * Changes from v5:
+ *  - datatableajax: removed Reg.Key column from grid; added District & Mandal columns
+ *  - datatableajax: reg_ukey now shown as tooltip on mobile/name hover (via data-regkey)
+ *  - save(): captures client IP into tr_ip_address on both insert and update
+ *  - Search in model now also covers tr_mandal
+ *  - All other logic unchanged.
  */
 class Users extends MX_Controller
 {
@@ -55,10 +56,18 @@ class Users extends MX_Controller
         $orders = $this->input->post('order');
         $orders = $orders ? $orders : array();
 
+        // ── Column map updated: Reg.Key removed, District & Mandal added ──
+        // Grid col indices: 0=#, 1=Mobile/Name, 2=District, 3=Mandal, 4=Language, 5=Type, 6=Aadhar, 7=Status, 8=Date, 9=Actions
         $col_map = array(
-            0=>'tr_id', 1=>'tr_mobile', 2=>'tr_reg_ukey',
-            3=>'tr_language', 4=>'tr_registration_type',
-            5=>'tr_aadhar_no', 6=>'tr_status', 7=>'tr_created_at',
+            0 => 'tr_id',
+            1 => 'tr_mobile',
+            2 => 'district_name',
+            3 => 'tr_mandal',
+            4 => 'tr_language',
+            5 => 'tr_registration_type',
+            6 => 'tr_aadhar_no',
+            7 => 'tr_status',
+            8 => 'tr_created_at',
         );
 
         $col_idx   = isset($orders[0]['column']) ? (int)$orders[0]['column'] : 0;
@@ -98,6 +107,8 @@ class Users extends MX_Controller
             $aadhar     = isset($r['tr_aadhar_no'])         ? $r['tr_aadhar_no']         : '';
             $created_at = isset($r['tr_created_at'])        ? $r['tr_created_at']        : '';
             $tr_id      = isset($r['tr_id'])                ? (int)$r['tr_id']           : 0;
+            $district   = isset($r['district_name'])        ? $r['district_name']        : (isset($r['tr_district']) ? $r['tr_district'] : '');
+            $mandal     = isset($r['tr_mandal'])            ? $r['tr_mandal']            : '';
 
             $addr_parts = array();
             if (!empty($r['tr_full_address'])) $addr_parts[] = $r['tr_full_address'];
@@ -120,25 +131,35 @@ class Users extends MX_Controller
                 : '<span class="badge badge-transport">&#x1F69B; TRANSPORT</span>';
 
             $status_map = array(
-                'pending'=>'badge-pending','active'=>'badge-active',
-                'inactive'=>'badge-inactive','approved'=>'badge-approved',
-                'rejected'=>'badge-rejected',
+                'pending'  => 'badge-pending',
+                'active'   => 'badge-active',
+                'inactive' => 'badge-inactive',
+                'approved' => 'badge-approved',
+                'rejected' => 'badge-rejected',
             );
             $s_class      = isset($status_map[$status]) ? $status_map[$status] : 'badge-pending';
             $status_badge = '<span class="badge '.$s_class.'">'.strtoupper(htmlspecialchars($status)).'</span>';
 
-            $selfie_attr = $selfie_url  ? ' data-selfie="'.htmlspecialchars($selfie_url, ENT_QUOTES).'"' : '';
-            $addr_attr   = $address_tooltip ? ' data-address="'.$address_tooltip.'"' : '';
+            $selfie_attr  = $selfie_url      ? ' data-selfie="'.htmlspecialchars($selfie_url, ENT_QUOTES).'"'  : '';
+            $addr_attr    = $address_tooltip ? ' data-address="'.$address_tooltip.'"'                          : '';
+            // ── Reg.Key now surfaced as tooltip on hover ──
+            $regkey_attr  = $reg_ukey        ? ' data-regkey="'.htmlspecialchars($reg_ukey, ENT_QUOTES).'"'    : '';
 
-            $mobile_cell = '<div class="d-flex align-items-center gap-2 selfie-hover-trigger"'.$selfie_attr.$addr_attr.' style="cursor:default">
+            $mobile_cell = '<div class="d-flex align-items-center gap-2 selfie-hover-trigger"'.$selfie_attr.$addr_attr.$regkey_attr.' style="cursor:default">
                 <div>
                   <div class="fw-semibold" style="font-size:.85rem">'.htmlspecialchars($mobile).'</div>
                   '.($full_name ? '<div style="font-size:.72rem;color:#64748b">'.htmlspecialchars($full_name).'</div>' : '').'
                 </div>
               </div>';
 
-            $key_cell = $reg_ukey
-                ? '<code style="font-size:.72rem;background:#f1f5f9;padding:2px 6px;border-radius:4px">'.htmlspecialchars($reg_ukey).'</code>'
+            // ── District cell ──
+            $district_cell = $district
+                ? '<span style="font-size:.8rem">'.htmlspecialchars($district).'</span>'
+                : '<span class="text-muted">&mdash;</span>';
+
+            // ── Mandal cell ──
+            $mandal_cell = $mandal
+                ? '<span style="font-size:.8rem">'.htmlspecialchars($mandal).'</span>'
                 : '<span class="text-muted">&mdash;</span>';
 
             $aadhar_display = '<code style="font-family:monospace;font-size:.78rem">'.mask_aadhar($aadhar).'</code>';
@@ -160,17 +181,27 @@ class Users extends MX_Controller
                 </button>
               </div>';
 
+            // ── 10 data columns (no standalone Reg.Key col; District & Mandal added) ──
             $data[] = array(
                 '<span class="text-muted fw-semibold" style="font-size:.78rem">#'.$tr_id.'</span>',
-                $mobile_cell, $key_cell, $lang_badge, $type_badge,
-                $aadhar_display, $status_badge, $date_cell, $actions,
+                $mobile_cell,
+                $district_cell,
+                $mandal_cell,
+                $lang_badge,
+                $type_badge,
+                $aadhar_display,
+                $status_badge,
+                $date_cell,
+                $actions,
             );
         }
 
         echo json_encode(array(
-            'draw'=>$draw, 'recordsTotal'=>(int)$total,
-            'recordsFiltered'=>(int)$filtered_total,
-            'data'=>$data, 'csrf_token'=>$this->security->get_csrf_hash(),
+            'draw'           => $draw,
+            'recordsTotal'   => (int)$total,
+            'recordsFiltered'=> (int)$filtered_total,
+            'data'           => $data,
+            'csrf_token'     => $this->security->get_csrf_hash(),
         ));
     }
 
@@ -211,21 +242,24 @@ class Users extends MX_Controller
             }
 
             echo json_encode(array(
-                'status'=>'success','data'=>$record,'csrf_token'=>$this->security->get_csrf_hash(),
+                'status'     => 'success',
+                'data'       => $record,
+                'csrf_token' => $this->security->get_csrf_hash(),
             ));
         }
         else
         {
             echo json_encode(array(
-                'status'=>'error','message'=>'Record not found','csrf_token'=>$this->security->get_csrf_hash(),
+                'status'     => 'error',
+                'message'    => 'Record not found',
+                'csrf_token' => $this->security->get_csrf_hash(),
             ));
         }
     }
 
     // ═══════════════════════════════════════════
     // SAVE
-    // Added: tr_email field + send email on activate
-    // Added: tr_reg_ukey prefix fix on edit
+    // Added: tr_ip_address captured on insert AND update
     // ═══════════════════════════════════════════
     public function save()
     {
@@ -251,7 +285,9 @@ class Users extends MX_Controller
         if (!$this->form_validation->run())
         {
             echo json_encode(array(
-                'status'=>'error','message'=>validation_errors('', ' | '),'csrf_token'=>$this->security->get_csrf_hash(),
+                'status'     => 'error',
+                'message'    => validation_errors('', ' | '),
+                'csrf_token' => $this->security->get_csrf_hash(),
             ));
             return;
         }
@@ -274,9 +310,12 @@ class Users extends MX_Controller
 
         $upload_fields = array('tr_selfie','tr_pan_copy','tr_aadhar_front','tr_aadhar_back','tr_transport_front','tr_transport_back');
         $label_map     = array(
-            'tr_selfie'=>'Selfie', 'tr_pan_copy'=>'PAN Copy',
-            'tr_aadhar_front'=>'Aadhar Front', 'tr_aadhar_back'=>'Aadhar Back',
-            'tr_transport_front'=>'Transport/DL Front', 'tr_transport_back'=>'Transport/DL Back',
+            'tr_selfie'         => 'Selfie',
+            'tr_pan_copy'       => 'PAN Copy',
+            'tr_aadhar_front'   => 'Aadhar Front',
+            'tr_aadhar_back'    => 'Aadhar Back',
+            'tr_transport_front'=> 'Transport/DL Front',
+            'tr_transport_back' => 'Transport/DL Back',
         );
 
         if (!$tr_id)
@@ -286,14 +325,17 @@ class Users extends MX_Controller
                 if (empty($_FILES[$field]['name']))
                 {
                     echo json_encode(array(
-                        'status'=>'error',
-                        'message'=>$label_map[$field].' document is required.',
-                        'csrf_token'=>$this->security->get_csrf_hash(),
+                        'status'     => 'error',
+                        'message'    => $label_map[$field].' document is required.',
+                        'csrf_token' => $this->security->get_csrf_hash(),
                     ));
                     return;
                 }
             }
         }
+
+        // ── Capture client IP address ──
+        $ip_address = $this->input->ip_address();
 
         $data = array(
             'tr_mobile'            => $mobile,
@@ -311,6 +353,7 @@ class Users extends MX_Controller
             'tr_village'           => $this->input->post('tr_village'),
             'tr_pincode'           => $this->input->post('tr_pincode'),
             'tr_status'            => $status,
+            'tr_ip_address'        => $ip_address,   // ← IP captured here
             'tr_last_updated_at'   => date('Y-m-d H:i:s'),
         );
 
@@ -355,11 +398,9 @@ class Users extends MX_Controller
         if ($tr_id)
         {
             // ── Fix tr_reg_ukey prefix when registration type changes ──
-            // Extract the numeric part from the existing ukey and rebuild with correct prefix
             $existing_ukey = isset($existing['tr_reg_ukey']) ? $existing['tr_reg_ukey'] : '';
             if (preg_match('/(\d+)$/', $existing_ukey, $m))
             {
-                // Preserve original zero-padded number
                 $ukey_number = $m[1];
             }
             else
@@ -399,17 +440,6 @@ class Users extends MX_Controller
             );
         }
 
-        // ── Send status email if status changed to non-active ──
-        /* elseif ($ok && $status !== $old_status && !empty($email))
-        {
-            $this->email_helper->send_status_email(
-                $email,
-                $data['tr_full_name'],
-                $mobile,
-                $status
-            );
-        }*/
-
         echo json_encode(array(
             'status'     => $ok ? 'success' : 'error',
             'message'    => $ok ? $msg : 'Database error. Please try again.',
@@ -433,7 +463,6 @@ class Users extends MX_Controller
             return;
         }
 
-        // Get record before update
         $record = $this->User_model->get_registration_by_id($tr_id);
         $ok     = $this->User_model->update_status($tr_id, $new_status);
 
@@ -448,7 +477,6 @@ class Users extends MX_Controller
             {
                 if ($new_status === 'active' && $old_status !== 'active')
                 {
-                    // Generate password and send credentials email
                     $plain_pwd = $this->_generate_plain_password();
                     $hashed    = password_hash($plain_pwd, PASSWORD_BCRYPT);
                     $this->User_model->update_password($tr_id, $hashed);
@@ -456,7 +484,6 @@ class Users extends MX_Controller
                 }
                 else
                 {
-                    // Send status change notification only
                     $this->email_helper->send_status_email($email, $name, $mobile, $new_status);
                 }
             }
@@ -494,7 +521,6 @@ class Users extends MX_Controller
         $record = $this->User_model->get_registration_by_id($tr_id);
         $ok     = $this->User_model->update_password($tr_id, password_hash($pwd, PASSWORD_BCRYPT));
 
-        // Send new password to email
         if ($ok && $record && !empty($record['tr_email']))
         {
             $this->email_helper->send_password_email(
@@ -514,7 +540,7 @@ class Users extends MX_Controller
     }
 
     // ═══════════════════════════════════════════
-    // CHECK MOBILE / AADHAR — UNCHANGED
+    // CHECK MOBILE / AADHAR
     // ═══════════════════════════════════════════
     public function check_mobile()
     {
@@ -535,7 +561,7 @@ class Users extends MX_Controller
     }
 
     // ═══════════════════════════════════════════
-    // LOCATION AJAX — UNCHANGED
+    // LOCATION AJAX
     // ═══════════════════════════════════════════
     public function get_states()
     {
@@ -569,7 +595,7 @@ class Users extends MX_Controller
     }
 
     // ═══════════════════════════════════════════
-    // DELETE — UNCHANGED
+    // DELETE
     // ═══════════════════════════════════════════
     public function delete()
     {
@@ -577,8 +603,8 @@ class Users extends MX_Controller
         $tr_id = (int)$this->input->post('tr_id');
         $ok    = $this->User_model->delete_registration($tr_id);
         echo json_encode(array(
-            'status'  => $ok ? 'success' : 'error',
-            'message' => $ok ? 'Record deleted successfully!' : 'Failed to delete record',
+            'status'     => $ok ? 'success' : 'error',
+            'message'    => $ok ? 'Record deleted successfully!' : 'Failed to delete record',
             'csrf_token' => $this->security->get_csrf_hash(),
         ));
     }

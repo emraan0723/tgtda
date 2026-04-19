@@ -58,6 +58,7 @@ class Clients extends MX_Controller
         $data_view['initials']    = $initials;
         $data_view['issue_date']  = $created->format('d M Y');
         $data_view['valid_until'] = $valid->format('d M Y');
+        $data_view['reg_key']     = $driver['tr_reg_key'];
 
         $this->load->view('main_page', $data_view);
 

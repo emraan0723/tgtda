@@ -71,10 +71,14 @@
     .password-wrapper .toggle-pwd{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:none;background:none;color:var(--muted);cursor:pointer;font-size:.88rem;}
     .avatar-placeholder{border-radius:50%;background:linear-gradient(135deg,var(--primary),#6366f1);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:700;}
     #modalTitle{color:#ffffff;}
-    .selfie-popup{position:fixed;z-index:99999;pointer-events:none;background:#fff;border-radius:12px;padding:8px;box-shadow:0 8px 32px rgba(0,0,0,.28);border:2px solid var(--primary);display:none;max-width:220px;}
+
+    /* ── Selfie popup — updated with reg-key row ── */
+    .selfie-popup{position:fixed;z-index:99999;pointer-events:none;background:#fff;border-radius:12px;padding:8px;box-shadow:0 8px 32px rgba(0,0,0,.28);border:2px solid var(--primary);display:none;max-width:230px;}
     .selfie-popup img{width:130px;height:130px;object-fit:cover;border-radius:8px;display:block;margin:0 auto;}
     .selfie-popup .sp-label{font-size:.65rem;text-align:center;color:var(--muted);margin-top:4px;font-weight:600;}
-    .selfie-popup .sp-address{font-size:.63rem;color:#374151;margin-top:5px;line-height:1.4;border-top:1px solid #e2e8f0;padding-top:5px;word-break:break-word;}
+    .selfie-popup .sp-regkey{font-size:.68rem;color:#1d4ed8;margin-top:4px;text-align:center;font-family:monospace;background:#eff6ff;border-radius:5px;padding:2px 7px;display:none;word-break:break-all;}
+    .selfie-popup .sp-address{font-size:.63rem;color:#374151;margin-top:5px;line-height:1.4;border-top:1px solid #e2e8f0;padding-top:5px;word-break:break-word;display:none;}
+
     #imgZoomModal{z-index:99990!important;}
     #imgZoomModal .modal-backdrop{z-index:99989!important;}
     #imgZoomModal .modal-content{background:rgba(15,23,42,.96);border-radius:16px;}
@@ -113,7 +117,6 @@
     .btn-primary{color:#fff;background-color:#1e88e5;border-color:#1e88e5;}
     .btn-primary:hover{color:#fff;background-color:#1a7bd0;border-color:#1a7bd0;}
     .email-info-box{background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:7px 12px;font-size:.72rem;color:#0369a1;display:flex;align-items:center;gap:6px;margin-top:5px;}
-    /* ── Filter dropdowns loading state ── */
     .filter-loading{opacity:.6;pointer-events:none;}
     @keyframes spin{to{transform:rotate(360deg);}}
     .spin{display:inline-block;animation:spin .7s linear infinite;}
@@ -178,12 +181,12 @@ $countries = isset($countries) ? $countries : array();
                                 <option value="TRANSPORT">Transport</option>
                             </select>
 
-                            <!-- District Filter — populated via AJAX on page load -->
+                            <!-- District Filter -->
                             <select class="form-control form-control-sm" id="filterDistrict" style="width:150px;height:34px;" onchange="onFilterDistrictChange()">
                                 <option value="">All Districts</option>
                             </select>
 
-                            <!-- Mandal Filter — populated when district is selected -->
+                            <!-- Mandal Filter -->
                             <select class="form-control form-control-sm" id="filterMandal" style="width:150px;height:34px;" onchange="reloadTable()" disabled>
                                 <option value="">All Mandals</option>
                             </select>
@@ -205,7 +208,9 @@ $countries = isset($countries) ? $countries : array();
                             <tr>
                                 <th>#</th>
                                 <th>Mobile / Name</th>
-                                <th>Reg. Key</th>
+                                <!-- Reg.Key column REMOVED — now shown in hover popup -->
+                                <th>District</th><!-- NEW -->
+                                <th>Mandal</th>  <!-- NEW -->
                                 <th>Language</th>
                                 <th>Type</th>
                                 <th>Aadhar No</th>
@@ -224,11 +229,12 @@ $countries = isset($countries) ? $countries : array();
     </div>
 </div>
 
-<!-- SELFIE POPUP -->
+<!-- SELFIE POPUP — includes reg-key row -->
 <div id="selfiePopup" class="selfie-popup">
     <img id="selfiePopupImg" src="" alt="Selfie">
     <div class="sp-label"><i class="bi bi-person-circle"></i> Selfie</div>
-    <div class="sp-address" id="selfiePopupAddr" style="display:none"></div>
+    <div class="sp-regkey" id="selfiePopupKey"></div>
+    <div class="sp-address" id="selfiePopupAddr"></div>
 </div>
 
 <!-- IMAGE ZOOM MODAL -->
@@ -612,14 +618,21 @@ $countries = isset($countries) ? $countries : array();
                 dataSrc:function(json){ if(json&&json.csrf_token) Csrf.update(json.csrf_token); $('#recordInfo').text('Showing '+(json.recordsFiltered||0)+' of '+(json.recordsTotal||0)+' records'); return json.data||[]; },
                 error:function(){ showToast('Failed to load table data.','error'); }
             },
+            // 10 columns: #, Mobile/Name, District, Mandal, Language, Type, Aadhar, Status, Date, Actions
             columns:[
-                {data:0,width:'50px'},{data:1},{data:2},
-                {data:3,width:'90px'},{data:4,width:'110px'},{data:5},
-                {data:6,width:'100px'},{data:7,width:'130px'},
-                {data:8,orderable:false,searchable:false,width:'140px',className:'text-center'}
+                {data:0, width:'50px'},
+                {data:1},
+                {data:2, width:'120px'},  // District
+                {data:3, width:'110px'},  // Mandal
+                {data:4, width:'90px'},
+                {data:5, width:'110px'},
+                {data:6},
+                {data:7, width:'100px'},
+                {data:8, width:'130px'},
+                {data:9, orderable:false, searchable:false, width:'140px', className:'text-center'}
             ],
             language:{
-                search:'',searchPlaceholder:'Search mobile, name, aadhar...',
+                search:'',searchPlaceholder:'Search mobile, name, aadhar, district, mandal...',
                 processing:'<div class="text-primary"><span class="spinner-border spinner-border-sm mr-1"></span> Loading...</div>',
                 emptyTable:'<div class="text-center py-3 text-muted">No registrations found</div>',
                 zeroRecords:'<div class="text-center py-3 text-muted">No matching records</div>'
@@ -673,20 +686,16 @@ $countries = isset($countries) ? $countries : array();
         var distId    = document.getElementById('filterDistrict').value;
         var mandalSel = document.getElementById('filterMandal');
 
-        // Reset mandal dropdown
         mandalSel.innerHTML = '<option value="">All Mandals</option>';
         mandalSel.disabled  = true;
 
-        // Reload table immediately with just the district filter
         reloadTable();
 
         if(!distId) return;
 
-        // Load mandals for selected district
         ajaxPost(BASE_URL+'get_mandals', {district_id: distId}, function(res){
             (res.data || []).forEach(function(m){
                 var opt = document.createElement('option');
-                // Use mandal name as value — matches tr_mandal column (stores name, not ID)
                 opt.value       = m.tm_mandal;
                 opt.textContent = m.tm_mandal;
                 mandalSel.appendChild(opt);
@@ -695,26 +704,47 @@ $countries = isset($countries) ? $countries : array();
         });
     }
 
-    // ── SELFIE HOVER ──
+    // ── SELFIE HOVER — updated to also show reg key ──
     function bindSelfieHover(){
-        var popup=document.getElementById('selfiePopup');
-        var popImg=document.getElementById('selfiePopupImg');
-        var popAddr=document.getElementById('selfiePopupAddr');
+        var popup    = document.getElementById('selfiePopup');
+        var popImg   = document.getElementById('selfiePopupImg');
+        var popAddr  = document.getElementById('selfiePopupAddr');
+        var popKey   = document.getElementById('selfiePopupKey');
+
         $(document).off('mouseenter.selfie mouseleave.selfie mousemove.selfie');
-        $(document).on('mouseenter.selfie','.selfie-hover-trigger',function(e){
-            var url=$(this).data('selfie'); var addr=$(this).data('address')||'';
-            if(!url&&!addr) return;
-            if(url){ popImg.src=url; popImg.style.display='block'; } else { popImg.style.display='none'; }
-            if(addr&&popAddr){ popAddr.textContent=addr; popAddr.style.display='block'; } else if(popAddr){ popAddr.style.display='none'; }
-            popup.style.display='block'; positionPopup(e);
-        }).on('mousemove.selfie','.selfie-hover-trigger',function(e){
+        $(document).on('mouseenter.selfie', '.selfie-hover-trigger', function(e){
+            var url    = $(this).data('selfie')  || '';
+            var addr   = $(this).data('address') || '';
+            var regkey = $(this).data('regkey')  || '';
+
+            // Only show popup if there's something to show
+            if (!url && !addr && !regkey) return;
+
+            if (url) { popImg.src = url; popImg.style.display = 'block'; }
+            else      { popImg.style.display = 'none'; }
+
+            if (regkey && popKey) {
+                popKey.innerHTML = '<i class="bi bi-key" style="margin-right:3px"></i>' + regkey;
+                popKey.style.display = 'block';
+            } else if (popKey) {
+                popKey.style.display = 'none';
+            }
+
+            if (addr && popAddr) { popAddr.textContent = addr; popAddr.style.display = 'block'; }
+            else if (popAddr)    { popAddr.style.display = 'none'; }
+
+            popup.style.display = 'block';
             positionPopup(e);
-        }).on('mouseleave.selfie','.selfie-hover-trigger',function(){
-            popup.style.display='none'; popImg.src='';
+        }).on('mousemove.selfie', '.selfie-hover-trigger', function(e){
+            positionPopup(e);
+        }).on('mouseleave.selfie', '.selfie-hover-trigger', function(){
+            popup.style.display = 'none';
+            popImg.src = '';
         });
     }
+
     function positionPopup(e){
-        var popup=document.getElementById('selfiePopup'); var pw=popup.offsetWidth||230;
+        var popup=document.getElementById('selfiePopup'); var pw=popup.offsetWidth||240;
         var x=e.clientX+16; var y=e.clientY-80;
         if(x+pw+10>window.innerWidth) x=e.clientX-pw-10;
         if(y<0) y=4; popup.style.left=x+'px'; popup.style.top=y+'px';

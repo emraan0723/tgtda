@@ -112,6 +112,8 @@ $route['edit_currency'] = 'masters/currency/editCurrency';
 
 #client
 $route['client_profile'] = 'clients/profile/userProfile';
+$route['card_scan/(:any)'] = 'CardScan/index/$1';
+$route['verify/(:any)'] = 'verify/index/$1';
 
 
 
