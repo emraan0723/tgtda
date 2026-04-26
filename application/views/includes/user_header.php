@@ -13,7 +13,7 @@ exit;
     <meta name="description" content="">
     <meta name="author" content="">
     <!-- Favicon icon -->
-    <link rel="icon" type="image/png" sizes="18x18" href="<?php echo base_url()?>images/EYESMART_230x50.png">
+    <link rel="icon" type="image/png" sizes="18x18" href="<?php echo base_url()?>images/logo.jpg">
     <title><?php echo  isset($data['title']) ? $data['title'] : ''  ?></title>
     <!-- <link rel="canonical" href="https://www.wrappixel.com/templates/xtremeadmin/" /> -->
     <link href="<?php echo base_url();?>assets/libs/chartist/dist/chartist.min.css" rel="stylesheet">
@@ -261,10 +261,10 @@ exit;
                         <b class="logo-icon">
                             <!--You can put here icon as well // <i class="wi wi-sunset"></i> //-->
                             <!-- Dark Logo icon -->
-                            <img src="<?php echo base_url().'images/logo.png'?>" alt="Dashboard" class="dark-logo"  width="100px">
+                            <img src="<?php echo base_url().'images/logo.jpg'?>" alt="Dashboard" class="dark-logo"  width="100px">
                           
                             <!-- Light Logo icon -->
-                             <img src="<?php echo base_url().'images/logo.png'?>" alt="Dashboard" class="light-logo"  width="100px">
+                             <img src="<?php echo base_url().'images/logo.jpg'?>" alt="Dashboard" class="light-logo"  width="100px">
                           
                         </b>
                         <!--End Logo icon -->
@@ -276,7 +276,7 @@ exit;
                             <!-- dark Logo text -->
                                <!-- <img src="<?php echo base_url().'images/logo.jpg'?>" alt="Dashboard" class="dark-logo"  width="150px"> -->
                             <!-- Light Logo text -->
-                               <!-- <img src="<?php echo base_url().'images/logo.png'?>" alt="Dashboard" class="light-logo"  width="200px"> -->
+                               <!-- <img src="<?php echo base_url().'images/logo.jpg'?>" alt="Dashboard" class="light-logo"  width="200px"> -->
                         </span>
                     </a>
                     <!-- ============================================================== -->

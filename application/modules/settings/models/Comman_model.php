@@ -231,6 +231,34 @@ class Comman_model extends CI_model
     return $data;
   }
 
+    public function getMandals($params=array())
+    {
+        $mandal_name = isset($params['tm_mandal_name']) ? $params['tm_mandal_name'] : '';
+        $mandal_id = isset($params['state_id']) ? $params['state_id'] : 0;
+        $state_id = isset($params['state_id']) ? $params['state_id'] : 0;
+        $country_id = isset($params['country_id']) ? $params['country_id'] : 0;
+        $district_id = isset($params['district_id']) ? $params['district_id'] : 0;
+        $this->db->select("tm_mandal_ID AS mandal_id,tm_mandal AS mandal_name,tm_mandal_status AS mandal_status");
+        $this->db->from('tbl_mandal_masters');
+        $this->db->where("tm_mandal_status",'ACTIVE');
+        if($mandal_name !='')
+            $this->db->where("tm_mandal_name",$mandal_name);
+        if($mandal_id > 0)
+            $this->db->where("tm_mandal_ID",$mandal_id);
+        if($district_id > 0)
+            $this->db->where("tm_mandal_district_ID",$district_id);
+        if($state_id > 0)
+            $this->db->where("tm_mandal_state_ID",$state_id);
+        if($country_id > 0)
+            $this->db->where("tm_mandal_country_ID",$country_id);
+
+        $this->db->order_by("mandal_name", "ASC");
+        $query = $this->db->get();
+        $data['query'] = $query;
+        $data['isexists_insert'] = $query->num_rows();
+        return $data;
+    }
+
   public function getCitys($params=array())
   {
     $city_name = isset($params['tc_city_name']) ? $params['tc_city_name'] : '';
@@ -242,7 +270,7 @@ class Comman_model extends CI_model
     $this->db->from('tbl_city_masters');
     $this->db->where("tc_city_status",'ACTIVE'); 
     if($city_name !='')
-       $this->db->where("tc_city_name",$district_name);
+       $this->db->where("tc_city_name",$city_name);
     if($city_id > 0)
         $this->db->where("tc_city_ID",$city_id);  
     if($district_id > 0)

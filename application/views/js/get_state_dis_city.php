@@ -3,7 +3,8 @@ function StateList(country_id)
 { 
    
 
-     cityList(0,country_id);
+     //cityList(0,country_id);
+     MandalList(0,country_id)
 
     $(".statelist").find('option').not(':first').remove();
     var country_id = country_id.value;
@@ -87,7 +88,8 @@ function DistictsList(state_id)
            }
         });
      }
-     cityList(0,0);
+     //cityList(0,0);
+     MandalList(0,0)
    
 }
 
@@ -136,6 +138,55 @@ function cityList(district_id,country_id)
      }
 
    
+}
+
+
+function MandalList(district_id)
+{
+    $(".mandallist").find('option').not(':first').remove();
+    var district_id = district_id.value;
+    var country_id  = $("#country_id_1").val();
+    if(country_id !=0)
+    {
+        var country_id = country_id.value;
+    }
+    else
+    {
+        var country_id = 0;
+    }
+
+    if(district_id > 0 || (country_id > 0 && country_id !='101'))
+    {
+        var url = "<?php echo base_url(); ?>settings/comman/getMandals";
+        $.ajax({
+            type:'POST',
+            url: url,
+            data:{'district_id':district_id,'country_id':country_id,"<?php echo $this->security->get_csrf_token_name();?>":"<?php echo $this->security->get_csrf_hash();?>"},
+            dataType:'json',
+            success: function(data)
+            {
+                if(data !=0 && data !='')
+                {
+                    $.each(data,function(idx,obj)
+                    {
+                        $(".mandallist").append($('<option>',
+                            {
+                                value:obj,
+                                text:idx
+
+                            }));
+                    });
+                }
+                else
+                {
+                    $(".mandallist").find('option').not(':first').remove();
+                }
+
+            }
+        });
+    }
+
+
 }
 
 function getCurrency(country_id)

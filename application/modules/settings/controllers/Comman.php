@@ -191,6 +191,39 @@ class Comman extends MX_Controller
 		
 	}
 
+    public function getMandals()
+    {
+        $params = array();
+        $res = array();
+        $params['district_id'] = isset($_POST['district_id']) ? $_POST['district_id'] : 0;
+        $params['country_id'] = isset($_POST['country_id']) ? $_POST['country_id'] : 0;
+        $res = $this->Comman_model->getMandals($params);
+        //echo $this->db->last_query(); exit;
+        if(isset($res['query']))
+        {
+            $result =$res['query']->result_array();
+            $data = array();
+            if($res['query']->num_rows() > 0 && count($result) > 0)
+            {
+                foreach ($result as $value)
+                {
+                    $data[$value['mandal_name']] =ucwords(strtolower($value['mandal_id']));
+
+                }
+            }
+            else
+            {
+                $data = 0;
+            }
+        }
+
+        echo json_encode($data);
+
+
+    }
+
+
+
 	public function getProductAmount()
 	{
 		$params = array();

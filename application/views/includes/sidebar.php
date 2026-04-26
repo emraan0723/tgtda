@@ -131,6 +131,13 @@
                             <i class="mdi mdi-adjust"></i>
                             <span class="hide-menu">Mandal</span> </a>
                     </li>
+
+                    <li class="sidebar-item">
+                        <a href="<?php echo base_url().'activemember'; ?>" class="sidebar-link">
+                            <i class="mdi mdi-adjust"></i>
+                            <span class="hide-menu">Active Member Maping</span> </a>
+                    </li>
+
                    <!-- <li class="sidebar-item">
                         <a href="<?php /*echo base_url().'currency'; */?>" class="sidebar-link">
                             <i class="mdi mdi-adjust"></i>

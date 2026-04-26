@@ -9,7 +9,7 @@
     <meta name="description" content="">
     <meta name="author" content="">
     <!-- Favicon icon -->
-<link rel="icon" type="image/png" sizes="18x18" href="<?php echo base_url()?>images/EYESMART_230x50.png">
+<link rel="icon" type="image/png" sizes="18x18" href="<?php echo base_url()?>images/logo.jpg">
     <title><?php echo  isset($data['title']) ? $data['title'] : ''  ?></title>
     <!-- Custom CSS -->
     <link href="<?php echo base_url();?>dist/css/style.min.css" rel="stylesheet">
