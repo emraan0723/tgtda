@@ -13,13 +13,13 @@
     .photo-frame { width:82px; height:90px; border-radius:8px; overflow:hidden; background:#c8dff8; display:flex; align-items:center; justify-content:center; border:2px solid #1e88e5; margin-bottom:12px; }
     .photo-frame img { width:100%; height:100%; object-fit:cover; }
     .photo-ini  { font-size:28px; font-weight:900; color:#1e88e5; }
-    /* ── QR code block ── */
-    .qr-wrap { margin-top:10px; text-align:center; }
-    .qr-wrap canvas, .qr-wrap img { width:72px !important; height:72px !important; border-radius:6px; border:2px solid #1e88e5; padding:3px; background:#fff; display:block; margin:0 auto; }
-    .qr-label { font-size:7px; color:#8a9ab5; text-transform:uppercase; letter-spacing:.6px; font-weight:700; margin-top:4px; }
-    /* ── end QR ── */
-    .member-since { font-size:8px; color:#8a9ab5; text-transform:uppercase; letter-spacing:.6px; text-align:center; font-weight:600; }
-    .member-since span { display:block; font-size:11px; color:#1a2a4a; font-weight:700; margin-top:2px; }
+
+    /* ── Barcode ── */
+    .barcode-wrap { margin-top:8px; text-align:center; background:#fff; border-radius:6px; border:1.5px solid #1e88e5; padding:4px 5px 2px; }
+    .barcode-wrap svg { width:96px !important; height:36px !important; display:block; }
+    .barcode-label { font-size:7px; color:#8a9ab5; text-transform:uppercase; letter-spacing:.6px; font-weight:700; margin-top:3px; }
+    /* ── end Barcode ── */
+
     .info-col   { flex:1; padding:18px 18px 14px; }
     .drv-name   { font-size:18px; font-weight:900; color:#1a2a4a; line-height:1.1; margin-bottom:3px; }
     .drv-regid  { font-size:11px; color:#1e88e5; font-weight:700; letter-spacing:.4px; margin-bottom:14px; }
@@ -53,7 +53,7 @@
             <div class="card-head">
                 <div class="head-left">
                     <div class="logo-box">
-                        <img src="<?php echo base_url('images/logo.jpg'); ?>" alt="logo" width="76">
+                        <img src="<?php echo base_url('images/logo.png'); ?>" alt="logo" width="76">
                     </div>
                     <div>
                         <div class="org-name">TGTDA</div>
@@ -73,18 +73,18 @@
                 <div class="photo-col">
                     <div class="photo-frame">
                         <?php if (!empty($driver['tr_selfie'])): ?>
-                            <img src="<?php echo base_url('uploads/registration/' .$driver['tr_reg_key'].'/'. $driver['tr_selfie']); ?>" alt="Photo">
+                            <img src="<?php echo base_url('uploads/' . $driver['tr_selfie']); ?>" alt="Photo">
                         <?php else: ?>
                             <span class="photo-ini"><?php echo htmlspecialchars($initials); ?></span>
                         <?php endif; ?>
                     </div>
 
-                    <!-- ── QR CODE (scan → secure profile page) ── -->
-                    <div class="qr-wrap">
-                        <div id="qrcode"></div>
-                        <div class="qr-label">Scan to Verify</div>
+                    <!-- ── BARCODE ── -->
+                    <div class="barcode-wrap">
+                        <svg id="barcode"></svg>
                     </div>
-                    <!-- ── end QR ── -->
+                    <div class="barcode-label">Scan to Verify</div>
+                    <!-- ── end BARCODE ── -->
                 </div>
 
                 <!-- Info Column -->
@@ -147,28 +147,29 @@
     </div>
 </div>
 
-<!-- QRCode.js library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- JsBarcode -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+<!-- html2canvas for download -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script>
-    // Build the secure scan URL using tr_reg_key
-    var scanUrl = '<?php echo base_url("verify/" . urlencode($driver["tr_reg_key"])); ?>';
 
-    new QRCode(document.getElementById("qrcode"), {
-        text        : scanUrl,
-        width       : 72,
-        height      : 72,
-        colorDark   : "#1a2a4a",
-        colorLight  : "#ffffff",
-        correctLevel: QRCode.CorrectLevel.H
+<script>
+    // Barcode encodes the full verify URL — scan opens the profile page
+    var scanUrl = '<?php echo base_url("verify/" . urlencode($reg_key)); ?>';
+
+    JsBarcode("#barcode", scanUrl, {
+        format      : "CODE128",
+        width       : 1.2,
+        height      : 35,
+        displayValue: false,
+        margin      : 2
     });
 
     function downloadCard() {
         var wrap = document.getElementById('dl-wrap');
         wrap.style.display = 'none';
         html2canvas(document.getElementById('idcard'), {
-            scale: 3,
-            useCORS: true,
+            scale          : 3,
+            useCORS        : true,
             backgroundColor: '#ffffff'
         }).then(function(canvas) {
             wrap.style.display = 'block';

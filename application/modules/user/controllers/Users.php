@@ -210,7 +210,7 @@ class Users extends MX_Controller
     // ═══════════════════════════════════════════
     public function get_registration()
     {
-        $this->_json();
+        $this->getJson();
         $tr_id  = (int)$this->input->post('tr_id');
         $record = $this->User_model->get_registration_by_id($tr_id);
 
@@ -263,7 +263,7 @@ class Users extends MX_Controller
     // ═══════════════════════════════════════════
     public function save()
     {
-        $this->_json();
+        $this->getJson();
 
         $tr_id = (int)$this->input->post('tr_id');
 
@@ -452,7 +452,7 @@ class Users extends MX_Controller
     // ═══════════════════════════════════════════
     public function toggle_status()
     {
-        $this->_json();
+        $this->getJson();
         $tr_id      = (int)$this->input->post('tr_id');
         $new_status = $this->input->post('status');
         $allowed    = array('active','inactive','pending','rejected');
@@ -502,7 +502,7 @@ class Users extends MX_Controller
     // ═══════════════════════════════════════════
     public function change_password()
     {
-        $this->_json();
+        $this->getJson();
         $tr_id   = (int)$this->input->post('tr_id');
         $pwd     = $this->input->post('new_password');
         $confirm = $this->input->post('confirm_password');
@@ -544,7 +544,7 @@ class Users extends MX_Controller
     // ═══════════════════════════════════════════
     public function check_mobile()
     {
-        $this->_json();
+        $this->getJson();
         $mobile = $this->input->post('mobile');
         $tr_id  = (int)$this->input->post('tr_id');
         $exists = $this->User_model->is_mobile_duplicate($mobile, $tr_id ? $tr_id : null);
@@ -553,7 +553,7 @@ class Users extends MX_Controller
 
     public function check_aadhar()
     {
-        $this->_json();
+        $this->getJson();
         $aadhar = $this->input->post('aadhar');
         $tr_id  = (int)$this->input->post('tr_id');
         $exists = $this->User_model->is_aadhar_duplicate($aadhar, $tr_id ? $tr_id : null);
@@ -565,21 +565,21 @@ class Users extends MX_Controller
     // ═══════════════════════════════════════════
     public function get_states()
     {
-        $this->_json();
+        $this->getJson();
         $states = $this->Location_model->get_states_by_country((int)$this->input->post('country_id'));
         echo json_encode(array('status'=>'success','data'=>$states,'csrf_token'=>$this->security->get_csrf_hash()));
     }
 
     public function get_districts()
     {
-        $this->_json();
+        $this->getJson();
         $districts = $this->Location_model->get_districts_by_state((int)$this->input->post('state_id'));
         echo json_encode(array('status'=>'success','data'=>$districts,'csrf_token'=>$this->security->get_csrf_hash()));
     }
 
     public function get_mandals()
     {
-        $this->_json();
+        $this->getJson();
         $mandals = $this->Location_model->get_mandals_by_district((int)$this->input->post('district_id'));
         echo json_encode(array('status'=>'success','data'=>$mandals,'csrf_token'=>$this->security->get_csrf_hash()));
     }
@@ -589,7 +589,7 @@ class Users extends MX_Controller
     // ═══════════════════════════════════════════
     public function get_all_districts()
     {
-        $this->_json();
+        $this->getJson();
         $districts = $this->Location_model->get_all_districts();
         echo json_encode(array('status'=>'success','data'=>$districts,'csrf_token'=>$this->security->get_csrf_hash()));
     }
@@ -599,7 +599,7 @@ class Users extends MX_Controller
     // ═══════════════════════════════════════════
     public function delete()
     {
-        $this->_json();
+        $this->getJson();
         $tr_id = (int)$this->input->post('tr_id');
         $ok    = $this->User_model->delete_registration($tr_id);
         echo json_encode(array(
@@ -652,4 +652,86 @@ class Users extends MX_Controller
         }
         return $ret_guid;
     }
+
+    public function save_latlng()
+    {
+        $this->getJson();
+
+        // PHP 7.2 safe: use ternary instead of ?? null coalescing on post values
+        $force       = (bool)(int)($this->input->post('force') ? $this->input->post('force') : 0);
+
+        $state_id    = (int)($this->input->post('state_id')    ? $this->input->post('state_id')    : 0);
+        $state_lat   = (float)($this->input->post('state_lat') ? $this->input->post('state_lat')   : 0);
+        $state_lng   = (float)($this->input->post('state_lng') ? $this->input->post('state_lng')   : 0);
+
+        $district_id = (int)($this->input->post('district_id') ? $this->input->post('district_id') : 0);
+        $dist_lat    = (float)($this->input->post('dist_lat')  ? $this->input->post('dist_lat')    : 0);
+        $dist_lng    = (float)($this->input->post('dist_lng')  ? $this->input->post('dist_lng')    : 0);
+
+        $mandal_id   = (int)($this->input->post('mandal_id')   ? $this->input->post('mandal_id')   : 0);
+        $mandal_lat  = (float)($this->input->post('mandal_lat')? $this->input->post('mandal_lat')  : 0);
+        $mandal_lng  = (float)($this->input->post('mandal_lng')? $this->input->post('mandal_lng')  : 0);
+
+        $saved = array();
+
+        if ($state_id > 0 && $state_lat != 0.0 && $state_lng != 0.0) {
+            $ok = $this->Location_model->save_state_latlng($state_id, $state_lat, $state_lng, $force);
+            if ($ok) {
+                $saved[] = 'state';
+            }
+        }
+
+        if ($district_id > 0 && $dist_lat != 0.0 && $dist_lng != 0.0) {
+            $ok = $this->Location_model->save_district_latlng($district_id, $dist_lat, $dist_lng, $force);
+            if ($ok) {
+                $saved[] = 'district';
+            }
+        }
+
+        if ($mandal_id > 0 && $mandal_lat != 0.0 && $mandal_lng != 0.0) {
+            $ok = $this->Location_model->save_mandal_latlng($mandal_id, $mandal_lat, $mandal_lng, $force);
+            if ($ok) {
+                $saved[] = 'mandal';
+            }
+        }
+
+        echo json_encode(array(
+            'status'     => 'success',
+            'saved'      => $saved,
+            'csrf_token' => $this->security->get_csrf_hash(),
+        ));
+    }
+
+    public function get_latlng()
+    {
+        $this->getJson();
+
+        $state_id    = (int)($this->input->post('state_id')    ? $this->input->post('state_id')    : 0);
+        $district_id = (int)($this->input->post('district_id') ? $this->input->post('district_id') : 0);
+        $mandal_id   = (int)($this->input->post('mandal_id')   ? $this->input->post('mandal_id')   : 0);
+
+        $result = array(
+            'state'    => array('lat' => null, 'lng' => null),
+            'district' => array('lat' => null, 'lng' => null),
+            'mandal'   => array('lat' => null, 'lng' => null),
+        );
+
+        if ($state_id > 0) {
+            $result['state'] = $this->Location_model->get_state_latlng($state_id);
+        }
+        if ($district_id > 0) {
+            $result['district'] = $this->Location_model->get_district_latlng($district_id);
+        }
+        if ($mandal_id > 0) {
+            $result['mandal'] = $this->Location_model->get_mandal_latlng($mandal_id);
+        }
+
+        echo json_encode(array(
+            'status'     => 'success',
+            'data'       => $result,
+            'csrf_token' => $this->security->get_csrf_hash(),
+        ));
+    }
+
+    private function getJson() { header('Content-Type: application/json'); }
 }

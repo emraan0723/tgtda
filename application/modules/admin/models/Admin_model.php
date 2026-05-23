@@ -347,13 +347,18 @@ class Admin_model extends CI_model
             $mail->SMTPDebug  = 2;                     // enables SMTP debug information (for testing)
             $mail->Host       = "smtp.office365.com"; // SMTP server
             $mail->Port       = 587;                   // set the SMTP port for the GMAIL server
-          //  $mail->Username   = "";  // GMAIL username
-            //$mail->Password   = "";            // GMAIL password
+          //  $mail->Username   = "eyesmartsupport@lvpei.net";  // GMAIL username
+            //$mail->Password   = "EyE@#!SuP@rt";            // GMAIL password
             $mail->Subject = 'Reset Password - TGTDA';
             $mail->WordWrap = 50;
             $mail->MsgHTML($msg);
             $mail->AddAddress($email);
-
+            //$mail->AddCC("nagalakshmi@lvpei.org");
+            /*$mail->AddCC("venkat@bewsoft.net");
+            $mail->AddCC("sneha@lvpei.org");*/
+            //$mail->AddCC("onlyranga@gmail.com");
+        
+           
             $mail->SMTPDebug  = 2;
             if($mail->Send())
             {

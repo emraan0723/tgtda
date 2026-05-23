@@ -377,7 +377,7 @@
             border-radius: 10px;
             background: #000;
             display: block;
-            object-fit: contain;
+            object-fit: contain; /* IMPORTANT: contain = full frame, no crop */
         }
         .cam-modal-canvas { display: none; }
         .cam-modal-preview {
@@ -534,7 +534,7 @@
                         <i class="bi bi-arrow-clockwise me-1"></i>Resend OTP
                     </button>
                 </div>
-              <!--  <div class="mt-3 p-3" style="background:#fffbf0;border-radius:10px;border:1px dashed var(--accent);">
+               <!-- <div class="mt-3 p-3" style="background:#fffbf0;border-radius:10px;border:1px dashed var(--accent);">
                     <p style="font-size:.75rem;color:#8a6d00;margin:0;"><i class="bi bi-info-circle me-1"></i><strong>Demo Mode:</strong> OTP is shown in browser console / alert. Remove in production.</p>
                 </div>-->
             </div>
@@ -665,7 +665,7 @@
                     </div>
                 </div>
 
-                <!-- Documents Grid -->
+                <!-- Documents Grid — each with Upload + Camera tabs -->
                 <div class="form-section">
                     <div class="section-title">Identity Documents</div>
                     <div class="row g-3">
@@ -937,13 +937,26 @@
         <div class="cam-modal-body">
             <div style="position:relative;display:inline-block;width:100%;">
                 <video id="docCamVideo" class="cam-modal-video" autoplay playsinline muted></video>
-                <div id="docCamGuide" style="position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;">
-                    <div style="width:88%;height:78%;border:2.5px solid rgba(255,220,50,0.85);border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,0.35);position:relative;">
+                <!-- Document alignment guide overlay -->
+                <div id="docCamGuide" style="
+                    position:absolute; inset:0; pointer-events:none;
+                    display:flex; align-items:center; justify-content:center;
+                ">
+                    <div style="
+                        width:88%; height:78%;
+                        border: 2.5px solid rgba(255,220,50,0.85);
+                        border-radius: 8px;
+                        box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
+                        position:relative;
+                    ">
+                        <!-- Corner marks -->
                         <span style="position:absolute;top:-3px;left:-3px;width:18px;height:18px;border-top:4px solid #ffe033;border-left:4px solid #ffe033;border-radius:3px 0 0 0;"></span>
                         <span style="position:absolute;top:-3px;right:-3px;width:18px;height:18px;border-top:4px solid #ffe033;border-right:4px solid #ffe033;border-radius:0 3px 0 0;"></span>
                         <span style="position:absolute;bottom:-3px;left:-3px;width:18px;height:18px;border-bottom:4px solid #ffe033;border-left:4px solid #ffe033;border-radius:0 0 0 3px;"></span>
                         <span style="position:absolute;bottom:-3px;right:-3px;width:18px;height:18px;border-bottom:4px solid #ffe033;border-right:4px solid #ffe033;border-radius:0 0 3px 0;"></span>
-                        <div style="position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);font-size:.68rem;color:#ffe033;font-weight:700;white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.8);">Align document inside the frame</div>
+                        <div style="position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);font-size:.68rem;color:#ffe033;font-weight:700;white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.8);">
+                            Align document inside the frame
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1004,44 +1017,9 @@
 <script src="<?php echo base_url();?>dist/js/app.min.js"></script>
 
 <script>
-    // ═══════════════════════════════════════════════════
-    //  CSRF SETUP — fixed for csrf_regenerate = TRUE
-    //  and FormData (multipart) requests
-    // ═══════════════════════════════════════════════════
     var csrfName = '<?php echo $this->security->get_csrf_token_name(); ?>';
     var csrfHash = '<?php echo $this->security->get_csrf_hash(); ?>';
-
-    // Helper: read the latest token from the CI cookie
-    function refreshCsrfFromCookie() {
-        var cookieName = 'tgtda_link_cookie';
-        var cookies = document.cookie.split(';');
-        for (var i = 0; i < cookies.length; i++) {
-            var c = cookies[i].trim();
-            if (c.indexOf(cookieName + '=') === 0) {
-                csrfHash = decodeURIComponent(c.substring(cookieName.length + 1));
-                return;
-            }
-        }
-    }
-
-    // After every AJAX response CI rotates the cookie — keep our variable in sync
-    $(document).ajaxComplete(function(event, xhr) {
-        refreshCsrfFromCookie();
-    });
-
-    // For normal $.post / $.ajax with string data: inject token via beforeSend
-    // (does NOT fire for FormData requests — those append the token manually below)
-    $.ajaxSetup({
-        beforeSend: function(xhr, settings) {
-            if (settings.contentType !== false &&
-                settings.data && typeof settings.data === 'string') {
-                settings.data += '&' + encodeURIComponent(csrfName) +
-                    '=' + encodeURIComponent(csrfHash);
-            }
-        }
-    });
-
-    // ═══════════════════════════════════════════════════
+    $.ajaxSetup({ data: { [csrfName]: csrfHash } });
 
     const BASE_URL = '<?= base_url() ?>';
     let currentStep = 1;
@@ -1050,6 +1028,7 @@
     let selfieBase64 = null;
     let selectedLang = 'HINDI';
 
+    // Track doc camera captures: key → base64 string or null
     const docCaptured = {
         'aadhar-front': null,
         'aadhar-back': null,
@@ -1062,15 +1041,16 @@
     //  DOCUMENT CAMERA MODULE
     // ══════════════════════════════════════
     let docCamStream = null;
-    let docCamFacing = 'environment';
+    let docCamFacing = 'environment'; // back camera by default for documents
     let docCamCurrentKey = null;
     let docCamCapturedData = null;
 
     function switchDocTab(key, tab, btn) {
-        var uploadPanel = document.getElementById('panel-' + key + '-upload');
-        var cameraPanel = document.getElementById('panel-' + key + '-camera');
-        var tabs = btn.closest('.doc-tabs').querySelectorAll('.doc-tab');
-        tabs.forEach(function(t) { t.classList.remove('active'); });
+        // Switch between upload/camera tabs for a document field
+        const uploadPanel = document.getElementById('panel-' + key + '-upload');
+        const cameraPanel = document.getElementById('panel-' + key + '-camera');
+        const tabs = btn.closest('.doc-tabs').querySelectorAll('.doc-tab');
+        tabs.forEach(t => t.classList.remove('active'));
         btn.classList.add('active');
         if (tab === 'upload') {
             uploadPanel.classList.add('active');
@@ -1084,7 +1064,8 @@
     async function openDocCamera(key, label) {
         docCamCurrentKey = key;
         docCamCapturedData = null;
-        docCamFacing = 'environment';
+        docCamFacing = 'environment'; // start with back camera
+
         document.getElementById('docCamTitle').innerHTML = '<i class="bi bi-camera me-2"></i>Capture: ' + label;
         document.getElementById('docCamVideo').style.display = 'block';
         document.getElementById('docCamPreview').style.display = 'none';
@@ -1093,21 +1074,28 @@
         document.getElementById('btnDocUsePhoto').style.display = 'none';
         document.getElementById('docCamTip').style.display = '';
         document.getElementById('docCamGuide').style.display = 'flex';
+
         document.getElementById('docCamOverlay').classList.add('show');
         await startDocCamStream();
     }
 
     async function startDocCamStream() {
-        if (docCamStream) { docCamStream.getTracks().forEach(function(t) { t.stop(); }); }
+        if (docCamStream) { docCamStream.getTracks().forEach(t => t.stop()); }
         try {
             docCamStream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: { ideal: docCamFacing }, width: { ideal: 1920, min: 640 }, height: { ideal: 1080, min: 480 } },
+                video: {
+                    facingMode: { ideal: docCamFacing },
+                    width:  { ideal: 1920, min: 640 },
+                    height: { ideal: 1080, min: 480 }
+                },
                 audio: false
             });
-            var vid = document.getElementById('docCamVideo');
+            const vid = document.getElementById('docCamVideo');
             vid.srcObject = docCamStream;
-            vid.onloadedmetadata = function() { vid.play(); };
+            // Wait for metadata so videoWidth/Height are populated
+            vid.onloadedmetadata = () => vid.play();
         } catch (e) {
+            // Fallback: try without constraints
             try {
                 docCamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                 document.getElementById('docCamVideo').srcObject = docCamStream;
@@ -1124,14 +1112,16 @@
     }
 
     function captureDocPhoto() {
-        var video = document.getElementById('docCamVideo');
-        var canvas = document.getElementById('docCamCanvas');
-        var captureW = video.videoWidth;
-        var captureH = video.videoHeight;
+        const video = document.getElementById('docCamVideo');
+        const canvas = document.getElementById('docCamCanvas');
+
+        // Use actual stream track resolution (not CSS display size) to avoid cutoff
+        let captureW = video.videoWidth;
+        let captureH = video.videoHeight;
         if (docCamStream) {
-            var track = docCamStream.getVideoTracks()[0];
+            const track = docCamStream.getVideoTracks()[0];
             if (track) {
-                var settings = track.getSettings();
+                const settings = track.getSettings();
                 if (settings.width)  captureW = settings.width;
                 if (settings.height) captureH = settings.height;
             }
@@ -1139,12 +1129,15 @@
         canvas.width  = captureW || 1280;
         canvas.height = captureH || 720;
         canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-        docCamCapturedData = canvas.toDataURL('image/jpeg', 0.92);
-        var preview = document.getElementById('docCamPreview');
+        docCamCapturedData = canvas.toDataURL('image/jpeg', 0.92); // higher quality for docs
+
+        // Show preview
+        const preview = document.getElementById('docCamPreview');
         preview.src = docCamCapturedData;
         preview.style.display = 'block';
         video.style.display = 'none';
         document.getElementById('docCamGuide').style.display = 'none';
+
         document.getElementById('btnDocCapture').style.display = 'none';
         document.getElementById('btnDocRetakeModal').style.display = '';
         document.getElementById('btnDocUsePhoto').style.display = '';
@@ -1164,45 +1157,59 @@
 
     function useDocPhoto() {
         if (!docCamCapturedData || !docCamCurrentKey) return;
-        var key = docCamCurrentKey;
+
+        const key = docCamCurrentKey;
         docCaptured[key] = docCamCapturedData;
-        var preview = document.getElementById('doc-preview-' + key);
-        if (preview) { preview.src = docCamCapturedData; preview.style.display = 'block'; }
-        var placeholder = document.getElementById('placeholder-' + key);
+
+        // Show thumbnail in the camera panel
+        const preview = document.getElementById('doc-preview-' + key);
+        if (preview) {
+            preview.src = docCamCapturedData;
+            preview.style.display = 'block';
+        }
+        const placeholder = document.getElementById('placeholder-' + key);
         if (placeholder) placeholder.style.display = 'none';
-        var btns = document.getElementById('doc-btns-' + key);
+
+        const btns = document.getElementById('doc-btns-' + key);
         if (btns) btns.style.display = 'flex';
-        var grp = document.getElementById('grp-' + key);
+
+        // Mark group as has-file
+        const grp = document.getElementById('grp-' + key);
         if (grp) { grp.classList.add('has-file'); grp.classList.remove('is-invalid'); }
-        var fileInput = document.getElementById(key.replace(/-/g, '_'));
+
+        // Clear upload-mode file if any to avoid conflict
+        const fileInput = document.getElementById(key.replace(/-/g, '_'));
         if (fileInput) fileInput.value = '';
-        var errEl = document.getElementById(key + '-error');
+
+        // Clear error
+        const errKey = key.replace('-front','-front').replace('-back','-back');
+        const errEl = document.getElementById(errKey + '-error');
         if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+
         closeDocCamModal();
     }
 
     function retakeDocPhoto(key, label) {
         docCaptured[key] = null;
-        var preview = document.getElementById('doc-preview-' + key);
+        const preview = document.getElementById('doc-preview-' + key);
         if (preview) { preview.src = ''; preview.style.display = 'none'; }
-        var placeholder = document.getElementById('placeholder-' + key);
+        const placeholder = document.getElementById('placeholder-' + key);
         if (placeholder) placeholder.style.display = '';
-        var btns = document.getElementById('doc-btns-' + key);
+        const btns = document.getElementById('doc-btns-' + key);
         if (btns) btns.style.display = 'none';
-        var grp = document.getElementById('grp-' + key);
+        const grp = document.getElementById('grp-' + key);
         if (grp) grp.classList.remove('has-file');
         document.getElementById('docdata-' + key).value = '';
         openDocCamera(key, label);
     }
 
     function closeDocCamModal() {
-        if (docCamStream) { docCamStream.getTracks().forEach(function(t) { t.stop(); }); docCamStream = null; }
+        if (docCamStream) { docCamStream.getTracks().forEach(t => t.stop()); docCamStream = null; }
         document.getElementById('docCamOverlay').classList.remove('show');
     }
 
     // ══════ STEP NAVIGATION ══════
-    function goStep(n, validate) {
-        if (validate === undefined) validate = true;
+    function goStep(n, validate = true) {
         if (validate && n > currentStep) {
             if (!validateStep(currentStep)) return;
         }
@@ -1216,24 +1223,24 @@
     }
 
     // ══════ STEP 1 – MOBILE ══════
-    $('#mobile_no').on('input', function() {
-        var v = this.value.replace(/\D/g, '').slice(0, 10);
+    $('#mobile_no').on('input', function () {
+        let v = this.value.replace(/\D/g, '').slice(0, 10);
         this.value = v;
         clearFieldError('mobile_no', 'mobile-error');
         $('#mobile-status-icon').removeClass('bi-check-circle-fill ok bi-x-circle-fill err');
         if (v.length === 10) debounceCheckMobile(v);
     });
 
-    var mobileTimer;
+    let mobileTimer;
     function debounceCheckMobile(v) {
         clearTimeout(mobileTimer);
-        mobileTimer = setTimeout(function() { checkMobileExists(v); }, 600);
+        mobileTimer = setTimeout(() => checkMobileExists(v), 600);
     }
 
     function checkMobileExists(mobile) {
         if (!isValidIndianMobile(mobile)) return;
         showSpinner('mobile-spinner');
-        $.post(BASE_URL + 'login/registration/check_mobile', { mobile: mobile }, function(res) {
+        $.post(BASE_URL + 'login/registration/check_mobile', { mobile }, function (res) {
             hideSpinner('mobile-spinner');
             if (res.exists) {
                 setFieldError('mobile_no', 'mobile-error', 'This mobile number is already registered.');
@@ -1241,14 +1248,14 @@
             } else {
                 $('#mobile-status-icon').addClass('bi-check-circle-fill ok');
             }
-        }, 'json').fail(function() { hideSpinner('mobile-spinner'); });
+        }, 'json').fail(() => hideSpinner('mobile-spinner'));
     }
 
     function sendOTP() {
-        var mobile = $('#mobile_no').val().trim();
+        const mobile = $('#mobile_no').val().trim();
         if (!validateMobileField()) return;
         $('#btn-send-otp').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Sending...');
-        $.post(BASE_URL + 'login/registration/send_otp', { mobile: mobile }, function(res) {
+        $.post(BASE_URL + 'login/registration/send_otp', { mobile }, function (res) {
             $('#btn-send-otp').prop('disabled', false).html('<i class="bi bi-send me-2"></i>Send OTP');
             if (res.success) {
                 verifiedMobile = mobile;
@@ -1258,14 +1265,14 @@
             } else {
                 showAlert('mobile-alert', 'mobile-alert-msg', res.message || 'Failed to send OTP.');
             }
-        }, 'json').fail(function() {
+        }, 'json').fail(() => {
             $('#btn-send-otp').prop('disabled', false).html('<i class="bi bi-send me-2"></i>Send OTP');
             showAlert('mobile-alert', 'mobile-alert-msg', 'Network error. Please try again.');
         });
     }
 
     function validateMobileField() {
-        var mobile = $('#mobile_no').val().trim();
+        const mobile = $('#mobile_no').val().trim();
         if (!mobile) { setFieldError('mobile_no', 'mobile-error', 'Mobile number is required.'); return false; }
         if (!isValidIndianMobile(mobile)) { setFieldError('mobile_no', 'mobile-error', 'Enter valid 10-digit Indian mobile number (starts with 6-9).'); return false; }
         if ($('#mobile-error').text()) return false;
@@ -1273,33 +1280,33 @@
     }
 
     // ══════ STEP 2 – OTP ══════
-    $(document).on('input', '.otp-digit', function() {
+    $(document).on('input', '.otp-digit', function () {
         this.value = this.value.replace(/\D/g, '').slice(-1);
         if (this.value) {
             $(this).addClass('filled');
-            var next = parseInt($(this).data('index')) + 1;
+            const next = parseInt($(this).data('index')) + 1;
             if (next < 6) $('.otp-digit[data-index="' + next + '"]').focus();
         } else {
             $(this).removeClass('filled');
         }
     });
 
-    $(document).on('keydown', '.otp-digit', function(e) {
+    $(document).on('keydown', '.otp-digit', function (e) {
         if (e.key === 'Backspace' && !this.value) {
-            var prev = parseInt($(this).data('index')) - 1;
+            const prev = parseInt($(this).data('index')) - 1;
             if (prev >= 0) $('.otp-digit[data-index="' + prev + '"]').focus();
         }
     });
 
     function getOTPValue() {
-        return $('.otp-digit').toArray().map(function(i) { return i.value; }).join('');
+        return $('.otp-digit').toArray().map(i => i.value).join('');
     }
 
     function verifyOTP() {
-        var otp = getOTPValue();
+        const otp = getOTPValue();
         if (otp.length < 6) { showAlert('otp-alert', 'otp-alert-msg', 'Please enter all 6 digits.'); return; }
         $('#btn-verify-otp').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Verifying...');
-        $.post(BASE_URL + 'login/registration/verify_otp', { mobile: verifiedMobile, otp: otp }, function(res) {
+        $.post(BASE_URL + 'login/registration/verify_otp', { mobile: verifiedMobile, otp }, function (res) {
             $('#btn-verify-otp').prop('disabled', false).html('<i class="bi bi-check-circle me-2"></i>Verify OTP');
             if (res.success) {
                 hideAlert('otp-alert');
@@ -1308,7 +1315,7 @@
                 showAlert('otp-alert', 'otp-alert-msg', res.message || 'Invalid OTP.');
                 $('.otp-digit').val('').removeClass('filled').first().focus();
             }
-        }, 'json').fail(function() {
+        }, 'json').fail(() => {
             $('#btn-verify-otp').prop('disabled', false).html('<i class="bi bi-check-circle me-2"></i>Verify OTP');
             showAlert('otp-alert', 'otp-alert-msg', 'Network error.');
         });
@@ -1318,36 +1325,36 @@
 
     // ══════ STEP 3 – DETAILS ══════
     function selectLang(el, val) {
-        document.querySelectorAll('.lang-card').forEach(function(c) { c.classList.remove('selected'); });
+        document.querySelectorAll('.lang-card').forEach(c => c.classList.remove('selected'));
         el.classList.add('selected');
         el.querySelector('input').checked = true;
         selectedLang = val;
     }
 
     function selectType(el, val) {
-        document.querySelectorAll('.type-card').forEach(function(c) { c.classList.remove('selected'); });
+        document.querySelectorAll('.type-card').forEach(c => c.classList.remove('selected'));
         el.classList.add('selected');
         el.querySelector('input').checked = true;
     }
 
-    $('#aadhar_no').on('input', function() {
-        var raw = this.value.replace(/\D/g, '').slice(0, 12);
-        var formatted = raw.match(/.{1,4}/g) ? raw.match(/.{1,4}/g).join('  ') : '';
+    $('#aadhar_no').on('input', function () {
+        let raw = this.value.replace(/\D/g, '').slice(0, 12);
+        let formatted = raw.match(/.{1,4}/g)?.join('  ') || '';
         this.value = formatted;
         clearFieldError('aadhar_no', 'aadhar-error');
         $('#aadhar-status-icon').removeClass('bi-check-circle-fill ok bi-x-circle-fill err');
         if (raw.length === 12) debounceCheckAadhar(raw);
     });
 
-    var aadharTimer;
+    let aadharTimer;
     function debounceCheckAadhar(v) {
         clearTimeout(aadharTimer);
-        aadharTimer = setTimeout(function() { checkAadharExists(v); }, 600);
+        aadharTimer = setTimeout(() => checkAadharExists(v), 600);
     }
 
     function checkAadharExists(aadhar) {
         showSpinner('aadhar-spinner');
-        $.post(BASE_URL + 'login/registration/check_aadhar', { aadhar: aadhar }, function(res) {
+        $.post(BASE_URL + 'login/registration/check_aadhar', { aadhar }, function (res) {
             hideSpinner('aadhar-spinner');
             if (res.exists) {
                 setFieldError('aadhar_no', 'aadhar-error', 'This Aadhar number is already registered.');
@@ -1355,19 +1362,19 @@
             } else {
                 $('#aadhar-status-icon').addClass('bi-check-circle-fill ok');
             }
-        }, 'json').fail(function() { hideSpinner('aadhar-spinner'); });
+        }, 'json').fail(() => hideSpinner('aadhar-spinner'));
     }
 
     function showTerms() {
-        var lang = termsData[selectedLang] || termsData['HINDI'];
+        const lang = termsData[selectedLang] || termsData['HINDI'];
         document.getElementById('terms-modal-title').innerHTML = '<i class="bi bi-file-text me-2"></i>' + lang.modalTitle;
         document.getElementById('terms-accept-label').textContent = lang.acceptLabel;
         document.getElementById('terms-accept-btn-text').textContent = lang.acceptBtn;
-        var html = '';
+        let html = '';
         lang.sections.forEach(function(s) { html += '<h6>' + s.heading + '</h6><p>' + s.body + '</p>'; });
         document.getElementById('terms-modal-body').innerHTML = html;
         document.getElementById('modal-terms-check').checked = false;
-        var modal = new bootstrap.Modal(document.getElementById('termsModal'));
+        const modal = new bootstrap.Modal(document.getElementById('termsModal'));
         modal.show();
     }
 
@@ -1387,7 +1394,7 @@
     async function openCamera() {
         try {
             cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-            var video = document.getElementById('camera-preview');
+            const video = document.getElementById('camera-preview');
             video.srcObject = cameraStream;
             video.style.display = 'block';
             document.getElementById('captured-img').style.display = 'none';
@@ -1400,18 +1407,18 @@
     }
 
     function capturePhoto() {
-        var video = document.getElementById('camera-preview');
-        var canvas = document.getElementById('camera-canvas');
+        const video = document.getElementById('camera-preview');
+        const canvas = document.getElementById('camera-canvas');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         canvas.getContext('2d').drawImage(video, 0, 0);
         selfieBase64 = canvas.toDataURL('image/jpeg', 0.8);
         document.getElementById('selfie_data').value = selfieBase64;
-        var img = document.getElementById('captured-img');
+        const img = document.getElementById('captured-img');
         img.src = selfieBase64;
         img.style.display = 'block';
         video.style.display = 'none';
-        if (cameraStream) { cameraStream.getTracks().forEach(function(t) { t.stop(); }); cameraStream = null; }
+        if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
         document.getElementById('btn-capture').style.display = 'none';
         document.getElementById('btn-retake').style.display = '';
         document.getElementById('selfie-upload-box').style.opacity = '.4';
@@ -1428,9 +1435,9 @@
     }
 
     function handleSelfieUpload(input) {
-        var file = input.files[0];
+        const file = input.files[0];
         if (!file) return;
-        var allowed = ['image/jpeg','image/jpg','image/png'];
+        const allowed = ['image/jpeg','image/jpg','image/png'];
         if (!allowed.includes(file.type)) { alert('Selfie must be JPG or PNG.'); input.value = ''; return; }
         if (file.size > 2 * 1024 * 1024) { alert('Selfie must be under 2MB.'); input.value = ''; return; }
         document.getElementById('selfie-file-name').textContent = '✓ ' + file.name;
@@ -1441,32 +1448,42 @@
 
     // ══════ DOCUMENT FILE UPLOAD HANDLER ══════
     function handleDocUpload(input, key) {
-        var file = input.files[0];
+        const file = input.files[0];
         if (!file) return;
-        var allowed = ['image/jpeg','image/jpg','image/png','application/pdf'];
-        if (!allowed.includes(file.type)) { alert('Only JPG, PNG, or PDF files are accepted.'); input.value = ''; return; }
-        if (file.size > 5 * 1024 * 1024) { alert('File size must not exceed 5MB.'); input.value = ''; return; }
+        const allowed = ['image/jpeg','image/jpg','image/png','application/pdf'];
+        if (!allowed.includes(file.type)) {
+            alert('Only JPG, PNG, or PDF files are accepted.');
+            input.value = ''; return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            alert('File size must not exceed 5MB.');
+            input.value = ''; return;
+        }
+        // If uploading via file, clear camera data for this key
         docCaptured[key] = null;
-        var preview = document.getElementById('doc-preview-' + key);
+        const preview = document.getElementById('doc-preview-' + key);
         if (preview) { preview.src = ''; preview.style.display = 'none'; }
-        var placeholder = document.getElementById('placeholder-' + key);
+        const placeholder = document.getElementById('placeholder-' + key);
         if (placeholder) placeholder.style.display = '';
-        var btns = document.getElementById('doc-btns-' + key);
+        const btns = document.getElementById('doc-btns-' + key);
         if (btns) btns.style.display = 'none';
-        var fnEl = document.getElementById('fn-' + key);
+
+        const fnEl = document.getElementById('fn-' + key);
         if (fnEl) fnEl.textContent = '✓ ' + file.name;
-        var grp = document.getElementById('grp-' + key);
+
+        const grp = document.getElementById('grp-' + key);
         if (grp) { grp.classList.add('has-file'); grp.classList.remove('is-invalid'); }
-        var errEl = document.getElementById(key + '-error');
+
+        const errKey = key;
+        const errEl = document.getElementById(errKey + '-error');
         if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
     }
 
     // ══════ FORM SUBMISSION ══════
     function submitForm() {
         if (!validateStep(4)) return;
-        var $btn = $('#btn-submit').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Submitting...');
-
-        var formData = new FormData();
+        const $btn = $('#btn-submit').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Submitting...');
+        const formData = new FormData();
         formData.append('language', $('input[name="language"]:checked').val());
         formData.append('registration_type', $('input[name="registration_type"]:checked').val());
         formData.append('aadhar_no', $('#aadhar_no').val().replace(/\s/g, ''));
@@ -1474,18 +1491,18 @@
 
         // Selfie
         if (selfieBase64 && selfieBase64 !== 'file') {
-            var byteString = atob(selfieBase64.split(',')[1]);
-            var ab = new ArrayBuffer(byteString.length);
-            var ia = new Uint8Array(ab);
-            for (var i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
-            var blob = new Blob([ab], { type: 'image/jpeg' });
+            const byteString = atob(selfieBase64.split(',')[1]);
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+            const blob = new Blob([ab], { type: 'image/jpeg' });
             formData.append('selfie', blob, 'selfie.jpg');
         } else if ($('#selfie_file')[0].files[0]) {
             formData.append('selfie', $('#selfie_file')[0].files[0]);
         }
 
-        // Document fields
-        var docFields = [
+        // Document fields — prefer camera capture, fallback to file upload
+        const docFields = [
             { key: 'aadhar-front',    fileId: 'aadhar_front',    formKey: 'aadhar_front' },
             { key: 'aadhar-back',     fileId: 'aadhar_back',     formKey: 'aadhar_back' },
             { key: 'transport-front', fileId: 'transport_front', formKey: 'transport_front' },
@@ -1493,27 +1510,26 @@
             { key: 'pan',             fileId: 'pan_copy',        formKey: 'pan_copy' }
         ];
 
-        docFields.forEach(function(f) {
+        docFields.forEach(f => {
             if (docCaptured[f.key]) {
+                // Camera-captured: convert base64 → blob
                 try {
-                    var b64   = docCaptured[f.key].split(',')[1];
-                    var bytes = atob(b64);
-                    var ab2   = new ArrayBuffer(bytes.length);
-                    var ia2   = new Uint8Array(ab2);
-                    for (var j = 0; j < bytes.length; j++) ia2[j] = bytes.charCodeAt(j);
-                    var blob2 = new Blob([ab2], { type: 'image/jpeg' });
-                    formData.append(f.formKey, blob2, f.formKey + '_captured.jpg');
+                    const b64 = docCaptured[f.key].split(',')[1];
+                    const bytes = atob(b64);
+                    const ab = new ArrayBuffer(bytes.length);
+                    const ia = new Uint8Array(ab);
+                    for (let i = 0; i < bytes.length; i++) ia[i] = bytes.charCodeAt(i);
+                    const blob = new Blob([ab], { type: 'image/jpeg' });
+                    formData.append(f.formKey, blob, f.formKey + '_captured.jpg');
                 } catch(e) { /* skip */ }
             } else {
-                var fileInput = document.getElementById(f.fileId);
+                const fileInput = document.getElementById(f.fileId);
                 if (fileInput && fileInput.files[0]) {
                     formData.append(f.formKey, fileInput.files[0]);
                 }
             }
         });
 
-        // ── Append CSRF token last so it uses the latest rotated hash ──
-        refreshCsrfFromCookie();
         formData.append(csrfName, csrfHash);
 
         $.ajax({
@@ -1523,7 +1539,7 @@
             processData: false,
             contentType: false,
             dataType: 'json',
-            success: function(res) {
+            success: function (res) {
                 $btn.prop('disabled', false).html('<i class="bi bi-send-check me-2"></i>Submit Registration');
                 if (res.success) {
                     $('#reg-id-display').text(res.id);
@@ -1532,7 +1548,7 @@
                     showAlert('submit-alert', 'submit-alert-msg', res.message || 'Submission failed. Please try again.');
                 }
             },
-            error: function() {
+            error: function () {
                 $btn.prop('disabled', false).html('<i class="bi bi-send-check me-2"></i>Submit Registration');
                 showAlert('submit-alert', 'submit-alert-msg', 'Network error. Please try again.');
             }
@@ -1541,10 +1557,10 @@
 
     // ══════ VALIDATION ══════
     function validateStep(step) {
-        var valid = true;
+        let valid = true;
 
         if (step === 1) {
-            var mobile = $('#mobile_no').val().trim();
+            const mobile = $('#mobile_no').val().trim();
             if (!mobile || !isValidIndianMobile(mobile)) {
                 setFieldError('mobile_no', 'mobile-error', 'Enter valid 10-digit Indian mobile number.');
                 valid = false;
@@ -1553,7 +1569,7 @@
         }
 
         if (step === 3) {
-            var aadharRaw = $('#aadhar_no').val().replace(/\s/g, '');
+            const aadharRaw = $('#aadhar_no').val().replace(/\s/g, '');
             if (!aadharRaw || aadharRaw.length !== 12) {
                 setFieldError('aadhar_no', 'aadhar-error', 'Enter valid 12-digit Aadhar number.');
                 valid = false;
@@ -1567,14 +1583,16 @@
         }
 
         if (step === 4) {
-            var hasSelfie = selfieBase64 || ($('#selfie_file')[0].files.length > 0);
+            // Selfie
+            let hasSelfie = selfieBase64 || ($('#selfie_file')[0].files.length > 0);
             if (!hasSelfie) {
                 $('#selfie-error').text('Selfie is required.').show();
                 $('#selfie-upload-box').addClass('is-invalid');
                 valid = false;
             }
 
-            var docChecks = [
+            // Document fields
+            const docChecks = [
                 { key: 'pan',             fileId: 'pan_copy',        errId: 'pan-error',             label: 'PAN Card' },
                 { key: 'aadhar-front',    fileId: 'aadhar_front',    errId: 'aadhar-front-error',    label: 'Aadhar Front' },
                 { key: 'aadhar-back',     fileId: 'aadhar_back',     errId: 'aadhar-back-error',     label: 'Aadhar Back' },
@@ -1582,9 +1600,9 @@
                 { key: 'transport-back',  fileId: 'transport_back',  errId: 'transport-back-error',  label: 'Transport/Licence Back' }
             ];
 
-            docChecks.forEach(function(f) {
-                var hasCamera = !!docCaptured[f.key];
-                var hasFile   = document.getElementById(f.fileId) && document.getElementById(f.fileId).files.length > 0;
+            docChecks.forEach(f => {
+                const hasCamera = !!docCaptured[f.key];
+                const hasFile   = document.getElementById(f.fileId)?.files.length > 0;
                 if (!hasCamera && !hasFile) {
                     $('#' + f.errId).text(f.label + ' is required.').show();
                     $('#grp-' + f.key).addClass('is-invalid');
@@ -1594,10 +1612,10 @@
 
             if (!valid) {
                 showAlert('submit-alert', 'submit-alert-msg', 'Please upload or capture all required documents.');
-                var firstInvalid = document.querySelector('.doc-input-group.is-invalid, .file-upload-box.is-invalid');
+                const firstInvalid = document.querySelector('.doc-input-group.is-invalid, .file-upload-box.is-invalid');
                 if (firstInvalid) {
-                    setTimeout(function() {
-                        var y = firstInvalid.getBoundingClientRect().top + window.pageYOffset - 100;
+                    setTimeout(() => {
+                        const y = firstInvalid.getBoundingClientRect().top + window.pageYOffset - 100;
                         window.scrollTo({ top: y, behavior: 'smooth' });
                     }, 150);
                 }
@@ -1628,17 +1646,20 @@
     function showSpinner(id) { $('#' + id).addClass('show'); }
     function hideSpinner(id) { $('#' + id).removeClass('show'); }
 
-    $(document).on('change', '.doc-upload-area input[type="file"]', function() {
+    // Clear invalid state on file select
+    $(document).on('change', '.doc-upload-area input[type="file"]', function () {
         $(this).closest('.doc-input-group').removeClass('is-invalid');
     });
 
+    // Close camera modal on overlay background click
     document.getElementById('docCamOverlay').addEventListener('click', function(e) {
         if (e.target === this) closeDocCamModal();
     });
 
+    // OTP paste support
     $(document).on('paste', '.otp-digit', function(e) {
         e.preventDefault();
-        var paste = (e.originalEvent.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'');
+        let paste = (e.originalEvent.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'');
         $('.otp-digit').each(function(i) {
             $(this).val(paste[i] || '');
             if (paste[i]) $(this).addClass('filled');
@@ -1648,21 +1669,21 @@
     /* ══════════════════════════════════════
        MULTILINGUAL TERMS & CONDITIONS DATA
     ══════════════════════════════════════ */
-    var termsData = {
+    const termsData = {
         ENGLISH: {
             modalTitle: 'Terms & Conditions – TGTDA',
             acceptLabel: 'I have read and accept the Terms & Conditions',
             acceptBtn: 'Accept & Close',
             sections: [
-                { heading: '1. Membership & Fees', body: 'Associations operate on member contributions. By registering, you agree to comply with the following fee structure:<ul><li><strong>Admission Fee:</strong> One-time payment at the time of joining.</li><li><strong>Annual Subscription:</strong> Recurring fee to maintain active membership status.</li><li>Members must renew their membership on time to avoid interruption of services.</li></ul>' },
-                { heading: '2. Documentation Requirements', body: 'To maintain professional standards, the following documents are required:<ul><li><strong>Driver Registration:</strong> Valid Driving Licence is mandatory.</li><li><strong>Transport Registration:</strong> Must own or lease at least one commercial vehicle OR provide business registration documents.</li><li><strong>KYC Compliance:</strong> Aadhaar card and PAN card copies are required.</li></ul>' },
-                { heading: '3. Welfare & Support Policy', body: 'The Association does not enforce mandatory contributions for death or welfare funds. However, in case of accidental death, the Association may voluntarily raise funds to support the deceased member\'s family.' },
-                { heading: '4. Code of Conduct', body: 'Your membership may be revoked under the following conditions:<ul><li>Violation of association bylaws or acting against the interests of the group.</li><li>Engaging in criminal activities or transporting illegal substances.</li></ul>' },
-                { heading: '5. Dispute Resolution', body: 'Any disputes must first be reported to the Association Committee before seeking external legal intervention.' },
-                { heading: '6. Political Neutrality', body: 'Members must not use Association platforms for political campaigning, especially during election periods.' },
-                { heading: '7. Participation & Meetings', body: 'Members are expected to attend General Body Meetings regularly and actively participate in Association activities.' },
-                { heading: '8. Non-Discrimination Policy', body: 'The Association ensures equal treatment of all members regardless of caste, religion, or background.' },
-                { heading: '10. Legal Policy', body: 'All legal matters will be subject to the jurisdiction of the courts in Hyderabad only.' }
+                { heading: '1. Membership & Fees', body: `Associations operate on member contributions. By registering, you agree to comply with the following fee structure:<ul><li><strong>Admission Fee:</strong> One-time payment at the time of joining.</li><li><strong>Annual Subscription:</strong> Recurring fee to maintain active membership status.</li><li>Members must renew their membership on time to avoid interruption of services.</li></ul>` },
+                { heading: '2. Documentation Requirements', body: `To maintain professional standards, the following documents are required:<ul><li><strong>Driver Registration:</strong> Valid Driving Licence is mandatory.</li><li><strong>Transport Registration:</strong> Must own or lease at least one commercial vehicle OR provide business registration documents.</li><li><strong>KYC Compliance:</strong> Aadhaar card and PAN card copies are required.</li></ul>` },
+                { heading: '3. Welfare & Support Policy', body: `The Association does not enforce mandatory contributions for death or welfare funds. However, in case of accidental death, the Association may voluntarily raise funds to support the deceased member's family.` },
+                { heading: '4. Code of Conduct', body: `Your membership may be revoked under the following conditions:<ul><li>Violation of association bylaws or acting against the interests of the group.</li><li>Engaging in criminal activities or transporting illegal substances.</li></ul>` },
+                { heading: '5. Dispute Resolution', body: `Any disputes must first be reported to the Association Committee before seeking external legal intervention.` },
+                { heading: '6. Political Neutrality', body: `Members must not use Association platforms for political campaigning, especially during election periods.` },
+                { heading: '7. Participation & Meetings', body: `Members are expected to attend General Body Meetings regularly and actively participate in Association activities.` },
+                { heading: '8. Non-Discrimination Policy', body: `The Association ensures equal treatment of all members regardless of caste, religion, or background.` },
+                { heading: '10. Legal Policy', body: `All legal matters will be subject to the jurisdiction of the courts in Hyderabad only.` }
             ]
         },
         TELUGU: {
@@ -1670,12 +1691,12 @@
             acceptLabel: 'నేను నిబంధనలు & షరతులను చదివి అంగీకరిస్తున్నాను',
             acceptBtn: 'అంగీకరించు & మూసివేయు',
             sections: [
-                { heading: '1. సభ్యత్వం & రుసుములు', body: 'సంఘం సభ్యుల సహకారంతో నడుస్తుంది. నమోదు చేసుకోవడం ద్వారా, మీరు ఈ క్రింది రుసుము నిర్మాణానికి అంగీకరిస్తున్నారు:<ul><li><strong>ప్రవేశ రుసుము:</strong> చేరిన సమయంలో ఒకేసారి చెల్లించాలి.</li><li><strong>వార్షిక చందా:</strong> సభ్యత్వాన్ని కొనసాగించడానికి పునరావృత రుసుము.</li></ul>' },
-                { heading: '2. పత్రాల అవసరాలు', body: 'వృత్తిపరమైన ప్రమాణాలను కాపాడటానికి క్రింది పత్రాలు అవసరం:<ul><li><strong>డ్రైవర్ నమోదు:</strong> చెల్లుబాటు అయ్యే డ్రైవింగ్ లైసెన్స్ తప్పనిసరి.</li><li><strong>KYC పాటింపు:</strong> ఆధార్ కార్డ్ మరియు PAN కార్డ్ కాపీలు అవసరం.</li></ul>' },
-                { heading: '3. సంక్షేమ & మద్దతు విధానం', body: 'సంఘం మరణ లేదా సంక్షేమ నిధులకు నిర్బంధ చందాలను అమలు చేయదు.' },
-                { heading: '4. ప్రవర్తనా నియమావళి', body: 'నేర కార్యకలాపాలలో పాల్గొనడం లేదా చట్టవిరుద్ధమైన వస్తువులను రవాణా చేస్తే సభ్యత్వం రద్దు చేయబడవచ్చు.' },
-                { heading: '5. వివాద పరిష్కారం', body: 'వివాదాలు ముందుగా సంఘం కమిటీకి నివేదించాలి.' },
-                { heading: '10. చట్టపరమైన విధానం', body: 'అన్ని చట్టపరమైన విషయాలు కేవలం హైదరాబాద్‌లోని న్యాయస్థానాల అధికార పరిధికి లోబడి ఉంటాయి.' }
+                { heading: '1. సభ్యత్వం & రుసుములు', body: `సంఘం సభ్యుల సహకారంతో నడుస్తుంది. నమోదు చేసుకోవడం ద్వారా, మీరు ఈ క్రింది రుసుము నిర్మాణానికి అంగీకరిస్తున్నారు:<ul><li><strong>ప్రవేశ రుసుము:</strong> చేరిన సమయంలో ఒకేసారి చెల్లించాలి.</li><li><strong>వార్షిక చందా:</strong> సభ్యత్వాన్ని కొనసాగించడానికి పునరావృత రుసుము.</li></ul>` },
+                { heading: '2. పత్రాల అవసరాలు', body: `వృత్తిపరమైన ప్రమాణాలను కాపాడటానికి క్రింది పత్రాలు అవసరం:<ul><li><strong>డ్రైవర్ నమోదు:</strong> చెల్లుబాటు అయ్యే డ్రైవింగ్ లైసెన్స్ తప్పనిసరి.</li><li><strong>KYC పాటింపు:</strong> ఆధార్ కార్డ్ మరియు PAN కార్డ్ కాపీలు అవసరం.</li></ul>` },
+                { heading: '3. సంక్షేమ & మద్దతు విధానం', body: `సంఘం మరణ లేదా సంక్షేమ నిధులకు నిర్బంధ చందాలను అమలు చేయదు.` },
+                { heading: '4. ప్రవర్తనా నియమావళి', body: `నేర కార్యకలాపాలలో పాల్గొనడం లేదా చట్టవిరుద్ధమైన వస్తువులను రవాణా చేస్తే సభ్యత్వం రద్దు చేయబడవచ్చు.` },
+                { heading: '5. వివాద పరిష్కారం', body: `వివాదాలు ముందుగా సంఘం కమిటీకి నివేదించాలి.` },
+                { heading: '10. చట్టపరమైన విధానం', body: `అన్ని చట్టపరమైన విషయాలు కేవలం హైదరాబాద్‌లోని న్యాయస్థానాల అధికార పరిధికి లోబడి ఉంటాయి.` }
             ]
         },
         HINDI: {
@@ -1683,15 +1704,15 @@
             acceptLabel: 'मैंने नियम और शर्तें पढ़ी हैं और मैं उन्हें स्वीकार करता/करती हूँ',
             acceptBtn: 'स्वीकार करें & बंद करें',
             sections: [
-                { heading: '1. सदस्यता और शुल्क', body: 'संघ सदस्यों के योगदान पर चलता है। पंजीकरण करके, आप निम्नलिखित शुल्क संरचना का पालन करने के लिए सहमत होते हैं:<ul><li><strong>प्रवेश शुल्क:</strong> सदस्यता लेते समय एकमुश्त भुगतान।</li><li><strong>वार्षिक सदस्यता:</strong> सक्रिय सदस्यता बनाए रखने के लिए आवर्ती शुल्क।</li></ul>' },
-                { heading: '2. दस्तावेज़ आवश्यकताएँ', body: 'पेशेवर मानकों को बनाए रखने के लिए निम्नलिखित दस्तावेज़ आवश्यक हैं:<ul><li><strong>चालक पंजीकरण:</strong> वैध ड्राइविंग लाइसेंस अनिवार्य है।</li><li><strong>KYC अनुपालन:</strong> आधार कार्ड और PAN कार्ड की प्रतियाँ आवश्यक हैं।</li></ul>' },
-                { heading: '3. कल्याण और सहायता नीति', body: 'संघ मृत्यु या कल्याण निधि के लिए अनिवार्य योगदान लागू नहीं करता।' },
-                { heading: '4. आचार संहिता', body: 'आपराधिक गतिविधियों या अवैध पदार्थों के परिवहन पर सदस्यता रद्द की जा सकती है।' },
-                { heading: '5. विवाद समाधान', body: 'विवादों को बाहरी कानूनी हस्तक्षेप से पहले संघ समिति को सूचित किया जाना चाहिए।' },
-                { heading: '6. राजनीतिक तटस्थता', body: 'सदस्यों को चुनावी अवधि के दौरान राजनीतिक प्रचार के लिए संघ के मंचों का उपयोग नहीं करना चाहिए।' },
-                { heading: '7. भागीदारी और बैठकें', body: 'सदस्यों से सामान्य सभा बैठकों में नियमित रूप से उपस्थित होने की अपेक्षा की जाती है।' },
-                { heading: '8. गैर-भेदभाव नीति', body: 'संघ सभी सदस्यों के साथ समान व्यवहार सुनिश्चित करता है।' },
-                { heading: '10. कानूनी नीति', body: 'सभी कानूनी मामले केवल हैदराबाद के न्यायालयों के अधिकार क्षेत्र के अधीन होंगे।' }
+                { heading: '1. सदस्यता और शुल्क', body: `संघ सदस्यों के योगदान पर चलता है। पंजीकरण करके, आप निम्नलिखित शुल्क संरचना का पालन करने के लिए सहमत होते हैं:<ul><li><strong>प्रवेश शुल्क:</strong> सदस्यता लेते समय एकमुश्त भुगतान।</li><li><strong>वार्षिक सदस्यता:</strong> सक्रिय सदस्यता बनाए रखने के लिए आवर्ती शुल्क।</li></ul>` },
+                { heading: '2. दस्तावेज़ आवश्यकताएँ', body: `पेशेवर मानकों को बनाए रखने के लिए निम्नलिखित दस्तावेज़ आवश्यक हैं:<ul><li><strong>चालक पंजीकरण:</strong> वैध ड्राइविंग लाइसेंस अनिवार्य है।</li><li><strong>KYC अनुपालन:</strong> आधार कार्ड और PAN कार्ड की प्रतियाँ आवश्यक हैं।</li></ul>` },
+                { heading: '3. कल्याण और सहायता नीति', body: `संघ मृत्यु या कल्याण निधि के लिए अनिवार्य योगदान लागू नहीं करता।` },
+                { heading: '4. आचार संहिता', body: `आपराधिक गतिविधियों या अवैध पदार्थों के परिवहन पर सदस्यता रद्द की जा सकती है।` },
+                { heading: '5. विवाद समाधान', body: `विवादों को बाहरी कानूनी हस्तक्षेप से पहले संघ समिति को सूचित किया जाना चाहिए।` },
+                { heading: '6. राजनीतिक तटस्थता', body: `सदस्यों को चुनावी अवधि के दौरान राजनीतिक प्रचार के लिए संघ के मंचों का उपयोग नहीं करना चाहिए।` },
+                { heading: '7. भागीदारी और बैठकें', body: `सदस्यों से सामान्य सभा बैठकों में नियमित रूप से उपस्थित होने की अपेक्षा की जाती है।` },
+                { heading: '8. गैर-भेदभाव नीति', body: `संघ सभी सदस्यों के साथ समान व्यवहार सुनिश्चित करता है।` },
+                { heading: '10. कानूनी नीति', body: `सभी कानूनी मामले केवल हैदराबाद के न्यायालयों के अधिकार क्षेत्र के अधीन होंगे।` }
             ]
         }
     };

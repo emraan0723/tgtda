@@ -562,7 +562,7 @@ $countries = isset($countries) ? $countries : array();
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-    var BASE_URL  = '<?php echo base_url("user/users/"); ?>';
+    var BASE_URL  = '<?php echo base_url("user/Users/"); ?>';
     var CSRF_NAME = '<?php echo $csrf_name; ?>';
     var _zoomScale = 1;
 
@@ -1183,3 +1183,5 @@ $countries = isset($countries) ? $countries : array();
     function setLoading(btn,state){ var txt=btn.querySelector('.btn-text'); var spin=btn.querySelector('.spinner-border'); if(txt) txt.classList.toggle('d-none',state); if(spin) spin.classList.toggle('d-none',!state); btn.disabled=state; }
     function showToast(msg,type){ type=type||'success'; Swal.fire({ toast:true, position:'top-end', icon:type, title:msg, showConfirmButton:false, timer:3200, timerProgressBar:true }); }
 </script>
+
+<script type="text/javascript" src="<?php echo base_url(); ?>assets/digi/js/latlng_view_snippet.js?v1=<?php echo rand(); ?>"></script>

@@ -102,7 +102,7 @@ class Login extends MX_Controller
 
     public function Userlogout()
     {
-        $array_items = array('role' => '', 'uuser_id' => '','uuser_status' => '','user_name' => '','b_developer_tools'=>'','admin_mail'=>'','user_mobile'=>'','user_access' => '','uuser_name'=>'','uuser_id'=>'','uuser_status'=>'','uuser_mobile'=>'','uuser_address'=>'','uuser_selfie'=>'');
+        $array_items = array('role' => '', 'uuser_id' => '','uuser_status' => '','user_name' => '','b_developer_tools'=>'','admin_mail'=>'','user_mobile'=>'','user_access' => '','uuser_name'=>'','uuser_id'=>'','uuser_status'=>'','uuser_mobile'=>'','uuser_address'=>'');
         $this->session->unset_userdata($array_items);
         $this->session->sess_destroy();
         redirect(base_url().'user_login');

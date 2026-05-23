@@ -109,11 +109,22 @@ $route['currency'] = 'masters/currency/currency';
 $route['currency_datatable'] = 'masters/currency/ajax_list';
 $route['edit_currency'] = 'masters/currency/editCurrency';
 
-
-#client
 $route['client_profile'] = 'clients/profile/userProfile';
 $route['card_scan/(:any)'] = 'CardScan/index/$1';
-$route['verify/(:any)'] = 'verify/index/$1';
+$route['verify/(:any)'] = 'clients/verify/index/$1';
+
+
+/*$route['activemember'] = 'masters/activemember/activemember';
+$route['active_member_datatable'] = 'masters/activemember/ajax_list';
+$route['edit_active_member'] = 'masters/activemember/editActiveMember';*/
+
+$route['activemember'] = 'masters/ActiveMemberMapping/activemembermapping';
+$route['active_member_datatable'] = 'masters/ActiveMemberMapping/ajax_list';
+$route['edit_active_member'] = 'masters/ActiveMemberMapping/editActiveMember';
+
+$route['map'] = 'clients/ActiveMemberMap/index';
+
+
 
 
 
