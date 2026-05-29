@@ -153,4 +153,70 @@ class ActiveMemberMap extends MX_Controller
         header('Content-Type: application/json');
         echo json_encode($mandals);
     }
+    
+    public function geocode_address()
+{
+    // Basic CSRF / POST check
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') show_404();
+
+    $address = trim($this->input->post('address'));
+    if (!$address) {
+        echo json_encode(['lat' => null, 'lng' => null]);
+        return;
+    }
+
+    // ── 1. Check DB cache first ──────────────────────────────
+    $cached = $this->db
+        ->where('gc_address', $address)
+        ->get('mandal_geocache')
+        ->row();
+
+    if ($cached) {
+        echo json_encode([
+            'lat' => (float)$cached->gc_lat,
+            'lng' => (float)$cached->gc_lng,
+        ]);
+        return;
+    }
+
+    // ── 2. Call Nominatim server-side (no CORS) ──────────────
+    $url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q='
+           . urlencode($address);
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_USERAGENT      => 'TGTDA-MemberMap/1.0 (admin@tgtda.com)',
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_HTTPHEADER     => ['Accept-Language: en'],
+    ]);
+    $raw  = curl_exec($ch);
+    curl_close($ch);
+
+    $data = json_decode($raw, true);
+
+    if (!empty($data[0]['lat'])) {
+        $lat = (float)$data[0]['lat'];
+        $lng = (float)$data[0]['lon'];
+
+        // Save to cache so we never geocode this address again
+        $this->db->insert('mandal_geocache', [
+            'gc_address'    => $address,
+            'gc_lat'        => $lat,
+            'gc_lng'        => $lng,
+            'gc_created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        echo json_encode(['lat' => $lat, 'lng' => $lng]);
+    } else {
+        // Cache the miss too — prevents hammering Nominatim for bad addresses
+        $this->db->insert('mandal_geocache', [
+            'gc_address'    => $address,
+            'gc_lat'        => null,
+            'gc_lng'        => null,
+            'gc_created_at' => date('Y-m-d H:i:s'),
+        ]);
+        echo json_encode(['lat' => null, 'lng' => null]);
+    }
+}
 }

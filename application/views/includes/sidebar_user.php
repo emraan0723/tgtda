@@ -10,18 +10,39 @@
                         <i class="mdi mdi-dots-horizontal"></i>
                         <span class="hide-menu"></span></li>
 
-                    <li class="sidebar-item">
-                        <a class="sidebar-link <?php echo ($this->router->fetch_class() == 'dashboard') ? 'active open' : '' ?>  waves-effect waves-dark" href="<?php echo base_url().'user_dashboard'; ?>" aria-expanded="false"><i class="mdi mdi-gauge"></i><span class="hide-menu">Dashboard </span></a>
+               <!--     <li class="sidebar-item">
+                        <a class="sidebar-link <?php /*echo ($this->router->fetch_class() == 'dashboard') ? 'active open' : '' */?>  waves-effect waves-dark" href="<?php /*echo base_url().'user_dashboard'; */?>" aria-expanded="false"><i class="mdi mdi-gauge"></i><span class="hide-menu">Dashboard </span></a>
 
                         <ul aria-expanded="false" class="collapse  first-level">
+                            <li class="sidebar-item">
+                                <a href="<?php /*echo base_url().'map'; */?>" class="sidebar-link">
+                                    <i class="mdi mdi-adjust"></i>
+                                    <span class="hide-menu">Members Map</span> </a>
+                            </li>
+                        </ul>
+
+
+                    </li>
+-->
+                    <li class="sidebar-item">
+                        <a class="sidebar-link  waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="fab fa-maxcdn"></i><span class="hide-menu">Dashboard </span></a>
+                        <ul aria-expanded="false" class="collapse  first-level">
+                            <li class="sidebar-item">
+                                <a href="<?php echo base_url().'user_dashboard'; ?>" class="sidebar-link">
+                                    <i class="mdi mdi-adjust"></i>
+                                    <span class="hide-menu">Identity Card</span> </a>
+                            </li>
+
                             <li class="sidebar-item">
                                 <a href="<?php echo base_url().'map'; ?>" class="sidebar-link">
                                     <i class="mdi mdi-adjust"></i>
                                     <span class="hide-menu">Members Map</span> </a>
                             </li>
                         </ul>
-
                     </li>
+
+
+
 
                    <!-- <li class="sidebar-item">
                         <a class="sidebar-link  waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="fab fa-maxcdn"></i><span class="hide-menu">Settings </span></a>

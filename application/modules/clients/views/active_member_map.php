@@ -85,7 +85,7 @@ html, body {
     gap         : 8px;
     flex-wrap   : wrap;
     flex-shrink : 0;
-    z-index     : 20;
+    z-index     : 1;
 }
 #amm-toolbar .tb-title {
     color          : #fff;
@@ -780,22 +780,19 @@ function ammGeocodeNext() {
     if (!geocodeQueue.length) { geocoding = false; return; }
     geocoding = true;
     var pin = geocodeQueue.shift();
-    var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' +
-        encodeURIComponent(pin.geocode_address);
 
-    $.ajax({
-        url      : url,
-        dataType : 'json',
-        headers  : { 'Accept-Language': 'en' },
-        success  : function (data) {
-            if (data && data.length > 0) {
-                ammPlaceMarker(pin, parseFloat(data[0].lat), parseFloat(data[0].lon));
+    $.post(
+        BASE_URL + 'masters/ActiveMemberMap/geocode_address',
+        { address: pin.geocode_address, [CSRF_NAME]: CSRF_TOKEN },
+        function (result) {
+            if (result && result.lat && result.lng) {
+                ammPlaceMarker(pin, result.lat, result.lng);
             }
-            setTimeout(ammGeocodeNext, 1100); /* Nominatim ToS: 1 req/sec */
+            setTimeout(ammGeocodeNext, 1200); // 1.2 s — respects Nominatim ToS
         },
-        error : function () {
-            setTimeout(ammGeocodeNext, 1100);
-        }
+        'json'
+    ).fail(function () {
+        setTimeout(ammGeocodeNext, 2000); // back-off on failure
     });
 }
 
