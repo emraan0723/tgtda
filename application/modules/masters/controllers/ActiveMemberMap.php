@@ -42,6 +42,8 @@ class ActiveMemberMap extends MX_Controller
 
     /* ─────────────────────────────────────────────
      * AJAX: Overall stats
+     * Returns total_registered (green), total_members (blue),
+     * mandals, districts, states, designations array
      * ───────────────────────────────────────────── */
     public function get_stats()
     {
@@ -50,7 +52,7 @@ class ActiveMemberMap extends MX_Controller
     }
 
     /* ─────────────────────────────────────────────
-     * AJAX: Map pins
+     * AJAX: Map pins (one per mandal)
      * ───────────────────────────────────────────── */
     public function get_map_pins()
     {
@@ -66,21 +68,8 @@ class ActiveMemberMap extends MX_Controller
     }
 
     /* ─────────────────────────────────────────────
-     * AJAX: District summary panel
-     * ───────────────────────────────────────────── */
-    public function get_district_summary()
-    {
-        $filters = array(
-            'country_id' => (int)$this->input->post('country_id'),
-            'state_id'   => (int)$this->input->post('state_id'),
-        );
-
-        header('Content-Type: application/json');
-        echo json_encode($this->ActiveMemberMap_model->get_district_summary($filters));
-    }
-
-    /* ─────────────────────────────────────────────
-     * AJAX: Members for a mandal (sidebar)
+     * AJAX: Members for a mandal → shown in modal
+     * POST: mandal_id
      * ───────────────────────────────────────────── */
     public function get_mandal_members()
     {
@@ -93,6 +82,37 @@ class ActiveMemberMap extends MX_Controller
 
         header('Content-Type: application/json');
         echo json_encode($this->ActiveMemberMap_model->get_members_by_mandal($mandal_id));
+    }
+
+    /* ─────────────────────────────────────────────
+     * AJAX: State-wise active members for right panel
+     * POST: country_id, state_id, district_id (optional)
+     * Returns: [{state_name, members:[...]}, ...]
+     * ───────────────────────────────────────────── */
+    public function get_state_members_panel()
+    {
+        $filters = array(
+            'country_id'  => (int)$this->input->post('country_id'),
+            'state_id'    => (int)$this->input->post('state_id'),
+            'district_id' => (int)$this->input->post('district_id'),
+        );
+
+        header('Content-Type: application/json');
+        echo json_encode($this->ActiveMemberMap_model->get_state_members_panel($filters));
+    }
+
+    /* ─────────────────────────────────────────────
+     * AJAX: District summary (kept for compatibility)
+     * ───────────────────────────────────────────── */
+    public function get_district_summary()
+    {
+        $filters = array(
+            'country_id' => (int)$this->input->post('country_id'),
+            'state_id'   => (int)$this->input->post('state_id'),
+        );
+
+        header('Content-Type: application/json');
+        echo json_encode($this->ActiveMemberMap_model->get_district_summary($filters));
     }
 
     /* ─────────────────────────────────────────────
@@ -155,103 +175,109 @@ class ActiveMemberMap extends MX_Controller
 
     /* ─────────────────────────────────────────────
      * AJAX: Server-side geocoding proxy
-     * Fixes CORS block when calling Nominatim from browser
-     * Results cached in mandal_geocache table forever
+     * Fixes CORS when calling Nominatim from browser.
+     * Results cached in mandal_geocache table forever.
+     *
+     * SQL to create cache table (run once):
+     *   CREATE TABLE IF NOT EXISTS mandal_geocache (
+     *     gc_id         INT AUTO_INCREMENT PRIMARY KEY,
+     *     gc_address    VARCHAR(500) NOT NULL,
+     *     gc_lat        DECIMAL(10,7) DEFAULT NULL,
+     *     gc_lng        DECIMAL(10,7) DEFAULT NULL,
+     *     gc_created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+     *     UNIQUE KEY uq_gc_address (gc_address(255))
+     *   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
      * ───────────────────────────────────────────── */
-   public function geocode_address()
-{
-    header('Content-Type: application/json');
+    public function geocode_address()
+    {
+        header('Content-Type: application/json');
 
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        echo json_encode(array('lat' => null, 'lng' => null));
-        return;
-    }
-
-    $address = trim($this->input->post('address'));
-    if ($address === '') {
-        echo json_encode(array('lat' => null, 'lng' => null));
-        return;
-    }
-
-    // ── Safety: check table exists before querying ────────
-    $table_exists = $this->db->table_exists('mandal_geocache');
-
-    // ── 1. Return from cache if table exists ──────────────
-    if ($table_exists) {
-        $cached = $this->db
-            ->where('gc_address', $address)
-            ->get('mandal_geocache')
-            ->row();
-
-        if ($cached) {
-            $lat = ($cached->gc_lat !== null) ? (float)$cached->gc_lat : null;
-            $lng = ($cached->gc_lng !== null) ? (float)$cached->gc_lng : null;
-            echo json_encode(array('lat' => $lat, 'lng' => $lng));
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(array('lat' => null, 'lng' => null));
             return;
         }
-    }
 
-    // ── 2. cURL not available ─────────────────────────────
-    if (!function_exists('curl_init')) {
-        echo json_encode(array('lat' => null, 'lng' => null));
-        return;
-    }
-
-    // ── 3. Call Nominatim via server-side cURL ────────────
-    $url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q='
-           . urlencode($address);
-
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_USERAGENT,      'TGTDA-MemberMap/1.0 (admin@tgtda.com)');
-    curl_setopt($ch, CURLOPT_TIMEOUT,        10);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-    curl_setopt($ch, CURLOPT_HTTPHEADER,     array('Accept-Language: en'));
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-    $raw      = curl_exec($ch);
-    $curl_err = curl_error($ch);
-    curl_close($ch);
-
-    // curl network error — don't cache, just return null
-    if ($curl_err || !$raw) {
-        echo json_encode(array('lat' => null, 'lng' => null));
-        return;
-    }
-
-    $data = json_decode($raw, true);
-
-    if (!empty($data[0]['lat']) && !empty($data[0]['lon'])) {
-        $lat = (float)$data[0]['lat'];
-        $lng = (float)$data[0]['lon'];
-        if ($table_exists) {
-            $this->_cache_geocode($address, $lat, $lng);
+        $address = trim($this->input->post('address'));
+        if ($address === '') {
+            echo json_encode(array('lat' => null, 'lng' => null));
+            return;
         }
-        echo json_encode(array('lat' => $lat, 'lng' => $lng));
-    } else {
-        // Address not found — cache the miss to avoid repeat calls
+
+        /* 1. Check DB cache */
+        $table_exists = $this->db->table_exists('mandal_geocache');
+
         if ($table_exists) {
-            $this->_cache_geocode($address, null, null);
+            $cached = $this->db
+                ->where('gc_address', $address)
+                ->get('mandal_geocache')
+                ->row();
+
+            if ($cached) {
+                $lat = ($cached->gc_lat !== null) ? (float)$cached->gc_lat : null;
+                $lng = ($cached->gc_lng !== null) ? (float)$cached->gc_lng : null;
+                echo json_encode(array('lat' => $lat, 'lng' => $lng));
+                return;
+            }
         }
-        echo json_encode(array('lat' => null, 'lng' => null));
+
+        /* 2. cURL availability check */
+        if (!function_exists('curl_init')) {
+            echo json_encode(array('lat' => null, 'lng' => null));
+            return;
+        }
+
+        /* 3. Call Nominatim server-side */
+        $url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q='
+            . urlencode($address);
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_USERAGENT,      'TGTDA-MemberMap/1.0 (admin@tgtda.com)');
+        curl_setopt($ch, CURLOPT_TIMEOUT,        10);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_HTTPHEADER,     array('Accept-Language: en'));
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        $raw      = curl_exec($ch);
+        $curl_err = curl_error($ch);
+        curl_close($ch);
+
+        if ($curl_err || !$raw) {
+            echo json_encode(array('lat' => null, 'lng' => null));
+            return;
+        }
+
+        $data = json_decode($raw, true);
+
+        if (!empty($data[0]['lat']) && !empty($data[0]['lon'])) {
+            $lat = (float)$data[0]['lat'];
+            $lng = (float)$data[0]['lon'];
+            if ($table_exists) {
+                $this->_cache_geocode($address, $lat, $lng);
+            }
+            echo json_encode(array('lat' => $lat, 'lng' => $lng));
+        } else {
+            if ($table_exists) {
+                $this->_cache_geocode($address, null, null);
+            }
+            echo json_encode(array('lat' => null, 'lng' => null));
+        }
     }
-}
 
-/* ─────────────────────────────────────────────
- * Private: Insert geocode result into cache
- * INSERT IGNORE handles duplicate key safely
- * ───────────────────────────────────────────── */
-private function _cache_geocode($address, $lat, $lng)
-{
-    $sql = "INSERT IGNORE INTO mandal_geocache
-                (gc_address, gc_lat, gc_lng, gc_created_at)
-            VALUES (?, ?, ?, ?)";
+    /* ─────────────────────────────────────────────
+     * Private: cache geocode result
+     * ───────────────────────────────────────────── */
+    private function _cache_geocode($address, $lat, $lng)
+    {
+        $sql = "INSERT IGNORE INTO mandal_geocache
+                    (gc_address, gc_lat, gc_lng, gc_created_at)
+                VALUES (?, ?, ?, ?)";
 
-    $this->db->query($sql, array(
-        $address,
-        $lat,
-        $lng,
-        date('Y-m-d H:i:s'),
-    ));
-}
+        $this->db->query($sql, array(
+            $address,
+            $lat,
+            $lng,
+            date('Y-m-d H:i:s'),
+        ));
+    }
 }

@@ -4,30 +4,31 @@
  * PHP 5.6 / 7.2 compatible
  * Place: application/modules/masters/models/ActiveMemberMap_model.php
  *
- * !! ONE-TIME SQL — Add lat/lng to mandal master table !!
- * Run this once in phpMyAdmin or MySQL:
+ * TABLE NAMES (your actual schema):
+ *   tbl_active_member_maping   — tamm_id, tamm_active_member_id, tamm_mandal_id,
+ *                                tamm_district_id, tamm_state_id, tamm_country_id,
+ *                                tamm_designation, tamm_status
+ *   tbl_registrations          — tr_id, tr_full_name, tr_mobile, tr_email,
+ *                                tr_selfie, tr_reg_key, tr_status
+ *   tbl_mandal_masters         — tm_mandal_ID, tm_mandal, tm_lat, tm_lng
+ *   tbl_district_masters       — tdt_district_ID, tdt_district_name, tdt_lat, tdt_lng
+ *   tbl_state_masters          — ts_state_ID, ts_state_name
+ *   tbl_countries_masters      — tc_country_ID, tc_country_name
  *
+ * ONE-TIME SQL (if not already run):
  *   ALTER TABLE tbl_mandal_masters
- *     ADD COLUMN tm_lat  DECIMAL(10,7) DEFAULT NULL AFTER tm_mandal,
- *     ADD COLUMN tm_lng  DECIMAL(10,7) DEFAULT NULL AFTER tm_lat;
+ *     ADD COLUMN tm_lat  DECIMAL(10,7) DEFAULT NULL,
+ *     ADD COLUMN tm_lng  DECIMAL(10,7) DEFAULT NULL;
  *
- * Then populate via:
- *   UPDATE tbl_mandal_masters SET tm_lat=17.4563, tm_lng=78.5385
- *   WHERE tm_mandal_ID = 57;
- *
- * If lat/lng are NULL, the frontend uses OpenStreetMap Nominatim
- * geocoding as an automatic fallback (no API key required).
- *
- * Similarly for districts:
  *   ALTER TABLE tbl_district_masters
- *     ADD COLUMN tdt_lat DECIMAL(10,7) DEFAULT NULL AFTER tdt_district_name,
- *     ADD COLUMN tdt_lng DECIMAL(10,7) DEFAULT NULL AFTER tdt_lat;
+ *     ADD COLUMN tdt_lat DECIMAL(10,7) DEFAULT NULL,
+ *     ADD COLUMN tdt_lng DECIMAL(10,7) DEFAULT NULL;
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class ActiveMemberMap_model extends CI_Model
 {
-    /* All designation values (canonical order) */
+    /* Canonical designation order */
     public static $DESIGNATIONS = array(
         'PRESIDENT',
         'VICE PRESIDENT',
@@ -47,33 +48,44 @@ class ActiveMemberMap_model extends CI_Model
     }
 
     /* ══════════════════════════════════════════════════════
-       OVERALL STATISTICS  — top stat cards
+       get_overall_stats()
+       Returns:
+         total_registered — all rows in tbl_registrations with status='active'
+         total_members    — active mapped members (tamm_status = 'ACTIVE')
+         total_mandals    — distinct mandals
+         total_districts  — distinct districts
+         total_states     — distinct states
+         designations     — count per designation (zero-filled)
     ══════════════════════════════════════════════════════ */
     public function get_overall_stats()
     {
-        /* total active members */
+        /* Total Registered (green stat) — tbl_registrations status active */
+        $this->db->where('tr_status', 'active');
+        $total_registered = $this->db->count_all_results('tbl_registrations');
+
+        /* Active mapped members (blue stat) */
         $this->db->where('tamm_status', 'ACTIVE');
         $total_members = $this->db->count_all_results('tbl_active_member_maping');
 
-        /* distinct mandals */
+        /* Distinct mandals */
         $this->db->select('COUNT(DISTINCT tamm_mandal_id) AS cnt');
         $this->db->where('tamm_status', 'ACTIVE');
         $q = $this->db->get('tbl_active_member_maping')->row_array();
         $total_mandals = isset($q['cnt']) ? (int)$q['cnt'] : 0;
 
-        /* distinct districts */
+        /* Distinct districts */
         $this->db->select('COUNT(DISTINCT tamm_district_id) AS cnt');
         $this->db->where('tamm_status', 'ACTIVE');
         $q = $this->db->get('tbl_active_member_maping')->row_array();
         $total_districts = isset($q['cnt']) ? (int)$q['cnt'] : 0;
 
-        /* distinct states */
+        /* Distinct states */
         $this->db->select('COUNT(DISTINCT tamm_state_id) AS cnt');
         $this->db->where('tamm_status', 'ACTIVE');
         $q = $this->db->get('tbl_active_member_maping')->row_array();
         $total_states = isset($q['cnt']) ? (int)$q['cnt'] : 0;
 
-        /* designation breakdown (ALL designations, zero-filled) */
+        /* Designation breakdown (zero-filled) */
         $this->db->select('tamm_designation AS designation, COUNT(*) AS cnt');
         $this->db->where('tamm_status', 'ACTIVE');
         $this->db->group_by('tamm_designation');
@@ -85,25 +97,26 @@ class ActiveMemberMap_model extends CI_Model
             $desig_map[$d] = 0;
         }
         foreach ($desig_rows as $dr) {
-            $desig_map[$dr['designation']] = (int)$dr['cnt'];
+            $key = trim($dr['designation']);
+            $desig_map[$key] = (int)$dr['cnt'];
         }
 
         return array(
-            'total_members'   => $total_members,
-            'total_mandals'   => $total_mandals,
-            'total_districts' => $total_districts,
-            'total_states'    => $total_states,
-            'designations'    => $desig_map,
+            'total_registered' => $total_registered,
+            'total_members'    => $total_members,
+            'total_mandals'    => $total_mandals,
+            'total_districts'  => $total_districts,
+            'total_states'     => $total_states,
+            'designations'     => $desig_map,
         );
     }
 
     /* ══════════════════════════════════════════════════════
-       MANDAL-LEVEL MAP PINS
-       One row per mandal with:
-         - lat, lng (from tbl_mandal_masters; 0 if not set → frontend geocodes)
-         - member_count (total)
-         - designation_counts  (JSON object: {PRESIDENT:1, VICE PRESIDENT:2, ...})
-         - geocode_address (for Nominatim fallback)
+       get_mandal_pins($filters)
+       One row per mandal that has active members.
+       Includes lat/lng (0 if not set → JS geocodes via server proxy),
+       member_count, designation_counts, member_names_arr,
+       geocode_address fallback string.
     ══════════════════════════════════════════════════════ */
     public function get_mandal_pins($filters = array())
     {
@@ -145,13 +158,13 @@ class ActiveMemberMap_model extends CI_Model
 
         $this->db->where('tamm.tamm_status', 'ACTIVE');
 
-        if ( ! empty($filters['country_id'])  && $filters['country_id']  > 0)
+        if (!empty($filters['country_id'])  && $filters['country_id']  > 0)
             $this->db->where('tamm.tamm_country_id',  (int)$filters['country_id']);
-        if ( ! empty($filters['state_id'])    && $filters['state_id']    > 0)
+        if (!empty($filters['state_id'])    && $filters['state_id']    > 0)
             $this->db->where('tamm.tamm_state_id',    (int)$filters['state_id']);
-        if ( ! empty($filters['district_id']) && $filters['district_id'] > 0)
+        if (!empty($filters['district_id']) && $filters['district_id'] > 0)
             $this->db->where('tamm.tamm_district_id', (int)$filters['district_id']);
-        if ( ! empty($filters['mandal_id'])   && $filters['mandal_id']   > 0)
+        if (!empty($filters['mandal_id'])   && $filters['mandal_id']   > 0)
             $this->db->where('tamm.tamm_mandal_id',   (int)$filters['mandal_id']);
 
         $this->db->group_by('tamm.tamm_mandal_id');
@@ -161,36 +174,33 @@ class ActiveMemberMap_model extends CI_Model
         );
 
         $rows = $this->db->get()->result_array();
-       // echo $this->db->last_query(); exit;
 
         foreach ($rows as &$row) {
             $row['member_count'] = (int)$row['member_count'];
+            $row['active_count'] = (int)$row['member_count']; /* all returned rows are active */
             $row['lat']          = (float)$row['lat'];
             $row['lng']          = (float)$row['lng'];
 
-            /* Build designation_counts from pipe-separated desig_list */
+            /* Build designation_counts */
             $desig_counts = array();
-            foreach (self::$DESIGNATIONS as $d) {
-                $desig_counts[$d] = 0;
-            }
-            if ( ! empty($row['desig_list'])) {
+            foreach (self::$DESIGNATIONS as $d) { $desig_counts[$d] = 0; }
+            if (!empty($row['desig_list'])) {
                 $items = explode('||', $row['desig_list']);
                 foreach ($items as $item) {
                     $item = trim($item);
-                    if (isset($desig_counts[$item])) {
+                    if (array_key_exists($item, $desig_counts)) {
                         $desig_counts[$item]++;
                     } else {
-                        $desig_counts[$item] = isset($desig_counts[$item])
-                            ? $desig_counts[$item] + 1 : 1;
+                        $desig_counts[$item] = 1;
                     }
                 }
             }
             $row['designation_counts'] = $desig_counts;
             unset($row['desig_list']);
 
-            /* Member names as array (first 5 for popup preview) */
+            /* Member names array (first 5 for reference) */
             $names = array();
-            if ( ! empty($row['member_names'])) {
+            if (!empty($row['member_names'])) {
                 $names = array_values(array_filter(
                     array_map('trim', explode('||', $row['member_names']))
                 ));
@@ -198,7 +208,7 @@ class ActiveMemberMap_model extends CI_Model
             $row['member_names_arr'] = $names;
             unset($row['member_names']);
 
-            /* Geocoding address for Nominatim fallback */
+            /* Geocoding address for server-side Nominatim fallback */
             $row['geocode_address'] = implode(', ', array_filter(array(
                 $row['mandal_name'],
                 $row['district_name'],
@@ -212,9 +222,139 @@ class ActiveMemberMap_model extends CI_Model
     }
 
     /* ══════════════════════════════════════════════════════
-       DISTRICT-LEVEL SUMMARY  (side panel list)
-       One row per district with member_count, mandal_count,
-       and designation_counts breakdown
+       get_members_by_mandal($mandal_id)
+       Full member list for the modal popup.
+       Returns: tr_full_name, tr_mobile, tr_selfie, tr_reg_key,
+                tamm_designation, district_name, state_name etc.
+       Ordered by canonical designation order then name.
+    ══════════════════════════════════════════════════════ */
+    public function get_members_by_mandal($mandal_id = 0)
+    {
+        $mandal_id = (int)$mandal_id;
+        if ($mandal_id <= 0) return array();
+
+        $this->db->select("
+            tamm.tamm_id,
+            tamm.tamm_designation,
+            tamm.tamm_status,
+            tamm.tamm_mandal_id,
+            tamm.tamm_district_id,
+            tamm.tamm_state_id,
+            tamm.tamm_country_id,
+            tr.tr_id,
+            tr.tr_full_name,
+            tr.tr_mobile,
+            tr.tr_email,
+            tr.tr_selfie,
+            tr.tr_reg_key,
+            tr.tr_language,
+            tr.tr_status        AS reg_status,
+            mm.tm_mandal        AS mandal_name,
+            dm.tdt_district_name AS district_name,
+            sm.ts_state_name    AS state_name,
+            cm.tc_country_name  AS country_name
+        ");
+        $this->db->from('tbl_active_member_maping tamm');
+        $this->db->join('tbl_registrations tr',
+            'tr.tr_id = tamm.tamm_active_member_id', 'left');
+        $this->db->join('tbl_mandal_masters mm',
+            'mm.tm_mandal_ID = tamm.tamm_mandal_id', 'left');
+        $this->db->join('tbl_district_masters dm',
+            'dm.tdt_district_ID = tamm.tamm_district_id', 'left');
+        $this->db->join('tbl_state_masters sm',
+            'sm.ts_state_ID = tamm.tamm_state_id', 'left');
+        $this->db->join('tbl_countries_masters cm',
+            'cm.tc_country_ID = tamm.tamm_country_id', 'left');
+
+        $this->db->where('tamm.tamm_mandal_id', $mandal_id);
+        $this->db->where('tamm.tamm_status', 'ACTIVE');
+
+        /* Order by canonical designation order */
+        $desig_order = implode("','", self::$DESIGNATIONS);
+        $this->db->order_by(
+            "FIELD(tamm.tamm_designation, '" . $desig_order . "')",
+            '', false
+        );
+        $this->db->order_by('tr.tr_full_name', 'ASC');
+
+        return $this->db->get()->result_array();
+    }
+
+    /* ══════════════════════════════════════════════════════
+       get_state_members_panel($filters)
+       NEW: State-wise active member list for the right panel.
+       Returns: [{state_name, members:[{tr_full_name, tr_mobile,
+                  tr_selfie, tr_reg_key, tamm_designation,
+                  district_name, mandal_id}]}]
+    ══════════════════════════════════════════════════════ */
+    public function get_state_members_panel($filters = array())
+    {
+        $this->db->select("
+            tamm.tamm_mandal_id              AS mandal_id,
+            tamm.tamm_designation,
+            tr.tr_full_name,
+            tr.tr_mobile,
+            tr.tr_selfie,
+            tr.tr_reg_key,
+            dm.tdt_district_name             AS district_name,
+            sm.ts_state_ID                   AS state_id,
+            sm.ts_state_name                 AS state_name
+        ");
+        $this->db->from('tbl_active_member_maping tamm');
+        $this->db->join('tbl_registrations tr',
+            'tr.tr_id = tamm.tamm_active_member_id', 'left');
+        $this->db->join('tbl_district_masters dm',
+            'dm.tdt_district_ID = tamm.tamm_district_id', 'left');
+        $this->db->join('tbl_state_masters sm',
+            'sm.ts_state_ID = tamm.tamm_state_id', 'left');
+
+        $this->db->where('tamm.tamm_status', 'ACTIVE');
+
+        if (!empty($filters['country_id'])  && $filters['country_id']  > 0)
+            $this->db->where('tamm.tamm_country_id',  (int)$filters['country_id']);
+        if (!empty($filters['state_id'])    && $filters['state_id']    > 0)
+            $this->db->where('tamm.tamm_state_id',    (int)$filters['state_id']);
+        if (!empty($filters['district_id']) && $filters['district_id'] > 0)
+            $this->db->where('tamm.tamm_district_id', (int)$filters['district_id']);
+
+        $this->db->order_by('sm.ts_state_name ASC, tr.tr_full_name ASC');
+
+        $rows = $this->db->get()->result_array();
+
+        /* Group by state */
+        $grouped    = array();
+        $stateOrder = array();
+
+        foreach ($rows as $row) {
+            $sid = $row['state_id'];
+            if (!isset($grouped[$sid])) {
+                $grouped[$sid]  = array(
+                    'state_name' => $row['state_name'],
+                    'members'    => array(),
+                );
+                $stateOrder[] = $sid;
+            }
+            $grouped[$sid]['members'][] = array(
+                'tr_full_name'     => $row['tr_full_name'],
+                'tr_mobile'        => $row['tr_mobile'],
+                'tr_selfie'        => $row['tr_selfie'],
+                'tr_reg_key'       => $row['tr_reg_key'],
+                'tamm_designation' => $row['tamm_designation'],
+                'mandal_id'        => $row['mandal_id'],
+                'district_name'    => $row['district_name'],
+            );
+        }
+
+        $result = array();
+        foreach ($stateOrder as $sid) {
+            $result[] = $grouped[$sid];
+        }
+        return $result;
+    }
+
+    /* ══════════════════════════════════════════════════════
+       get_district_summary($filters)
+       (Kept for compatibility)
     ══════════════════════════════════════════════════════ */
     public function get_district_summary($filters = array())
     {
@@ -243,9 +383,9 @@ class ActiveMemberMap_model extends CI_Model
 
         $this->db->where('tamm.tamm_status', 'ACTIVE');
 
-        if ( ! empty($filters['country_id']) && $filters['country_id'] > 0)
+        if (!empty($filters['country_id']) && $filters['country_id'] > 0)
             $this->db->where('tamm.tamm_country_id', (int)$filters['country_id']);
-        if ( ! empty($filters['state_id'])   && $filters['state_id']   > 0)
+        if (!empty($filters['state_id'])   && $filters['state_id']   > 0)
             $this->db->where('tamm.tamm_state_id',   (int)$filters['state_id']);
 
         $this->db->group_by('tamm.tamm_district_id');
@@ -259,10 +399,9 @@ class ActiveMemberMap_model extends CI_Model
             $row['lat']          = (float)$row['lat'];
             $row['lng']          = (float)$row['lng'];
 
-            /* Designation counts */
             $desig_counts = array();
             foreach (self::$DESIGNATIONS as $d) { $desig_counts[$d] = 0; }
-            if ( ! empty($row['desig_list'])) {
+            if (!empty($row['desig_list'])) {
                 $items = explode('||', $row['desig_list']);
                 foreach ($items as $item) {
                     $item = trim($item);
@@ -278,72 +417,7 @@ class ActiveMemberMap_model extends CI_Model
     }
 
     /* ══════════════════════════════════════════════════════
-       FULL MEMBER LIST FOR SIDEBAR
-       All members in a mandal with complete registration details
-    ══════════════════════════════════════════════════════ */
-    public function get_members_by_mandal($mandal_id = 0)
-    {
-        $mandal_id = (int)$mandal_id;
-        if ($mandal_id <= 0) return array();
-
-        $this->db->select("
-            tamm.tamm_id,
-            tamm.tamm_designation,
-            tamm.tamm_status,
-            tamm.tamm_key,
-            tamm.tamm_mandal_id,
-            tamm.tamm_district_id,
-            tamm.tamm_state_id,
-            tamm.tamm_country_id,
-            tr.tr_id,
-            tr.tr_full_name,
-            tr.tr_mobile,
-            tr.tr_email,
-            tr.tr_selfie,
-            tr.tr_reg_key,
-            tr.tr_reg_ukey,
-            tr.tr_language,
-            tr.tr_registration_type,
-            tr.tr_aadhar_no,
-            tr.tr_pan_no,
-            tr.tr_full_address,
-            tr.tr_dob,
-            tr.tr_village,
-            tr.tr_pincode,
-            tr.tr_status        AS reg_status,
-            mm.tm_mandal        AS mandal_name,
-            dm.tdt_district_name AS district_name,
-            sm.ts_state_name    AS state_name,
-            cm.tc_country_name  AS country_name
-        ");
-        $this->db->from('tbl_active_member_maping tamm');
-        $this->db->join('tbl_registrations tr',
-            'tr.tr_id = tamm.tamm_active_member_id', 'left');
-        $this->db->join('tbl_mandal_masters mm',
-            'mm.tm_mandal_ID = tamm.tamm_mandal_id', 'left');
-        $this->db->join('tbl_district_masters dm',
-            'dm.tdt_district_ID = tamm.tamm_district_id', 'left');
-        $this->db->join('tbl_state_masters sm',
-            'sm.ts_state_ID = tamm.tamm_state_id', 'left');
-        $this->db->join('tbl_countries_masters cm',
-            'cm.tc_country_ID = tamm.tamm_country_id', 'left');
-
-        $this->db->where('tamm.tamm_mandal_id', $mandal_id);
-        $this->db->where('tamm.tamm_status', 'ACTIVE');
-
-        /* Order by designation canonical order */
-        $desig_order = implode("','", self::$DESIGNATIONS);
-        $this->db->order_by(
-            "FIELD(tamm.tamm_designation, '" . $desig_order . "')",
-            '', false
-        );
-        $this->db->order_by('tr.tr_full_name', 'ASC');
-
-        return $this->db->get()->result_array();
-    }
-
-    /* ══════════════════════════════════════════════════════
-       DESIGNATION BREAKDOWN FOR A DISTRICT
+       get_district_designations($district_id)
     ══════════════════════════════════════════════════════ */
     public function get_district_designations($district_id = 0)
     {
